@@ -1,7 +1,7 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
-from config.settings import settings
+from server.config.settings import settings
 
 async def check_database():
     # Создаём движок
@@ -50,5 +50,6 @@ async def check_database():
         print(f"❌ Ошибка подключения или запроса: {e}")
     finally:
         await engine.dispose()
+
 
 asyncio.run(check_database())
