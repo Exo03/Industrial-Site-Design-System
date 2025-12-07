@@ -1,7 +1,7 @@
 # server/config/database.py
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from serevr.config.settings import settings
+from server.config.settings import settings
 
 # Асинхронный движок
 engine = create_async_engine(
@@ -25,3 +25,4 @@ async def get_db() -> AsyncSession:
         finally:
 
             await session.close()
+
