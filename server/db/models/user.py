@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, select
 from sqlalchemy.orm import relationship
 from passlib.context import CryptContext
-from db.base import Base
+from server.db.base import Base
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
@@ -34,4 +34,5 @@ class User(Base):
         result = await db.execute(
         select(User).where(User.email == email)
         )
+
         return result.scalar_one_or_none()
