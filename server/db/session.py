@@ -1,1 +1,1 @@
-from serevr.config.database import engine
+from server.config.database import engine
