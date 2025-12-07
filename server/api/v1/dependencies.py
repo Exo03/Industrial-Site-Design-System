@@ -3,10 +3,10 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from config.settings import settings
-from config.database import get_db
-from db.models.user import User
-from schemas.common import TokenData
+from serevr.config.settings import settings
+from serevr.config.database import get_db
+from serevr.db.models.user import User
+from serevr.schemas.common import TokenData
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/token")
 
@@ -32,6 +32,7 @@ async def get_current_user(
         return user
     except JWTError:
         raise credentials_exception
+
 
 
 
