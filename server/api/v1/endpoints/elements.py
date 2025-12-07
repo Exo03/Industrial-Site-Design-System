@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, exists
 from sqlalchemy.exc import IntegrityError
-from serevr.config.database import get_db
-from serevr.schemas.element import ElementCreate, ElementResponse, ElementUpdate
-from serevr.db.models.element import Element
-from serevr.db.models.project import Project
-from serevr.api.v1.dependencies import get_current_user
-from serevr.db.models.user import User
+from server.config.database import get_db
+from server.schemas.element import ElementCreate, ElementResponse, ElementUpdate
+from server.db.models.element import Element
+from server.db.models.project import Project
+from server.api.v1.dependencies import get_current_user
+from server.db.models.user import User
 
 router = APIRouter()
 
@@ -151,3 +151,4 @@ async def move_element(
     await db.refresh(element)
 
     return element
+
