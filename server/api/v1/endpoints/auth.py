@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from config.settings import settings
-from config.database import get_db
-from schemas.user import UserCreate, UserResponse
-from schemas.common import Token
-from db.models.user import User
+from serevr.config.settings import settings
+from serevr.config.database import get_db
+from serevr.schemas.user import UserCreate, UserResponse
+from serevr.schemas.common import Token
+from serevr.db.models.user import User
 from jose import jwt
 from datetime import datetime, timedelta
 
@@ -68,4 +68,5 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
 
