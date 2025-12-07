@@ -2,6 +2,7 @@ import asyncio
 import os
 from alembic import command
 from alembic.config import Config
+from pathlib import Path
 
 async def run_migrations():
     alembic_cfg = Config(str(Path(__file__).parent / "db" / "migrations" / "alembic.ini"))
