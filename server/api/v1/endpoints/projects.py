@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from config.database import get_db
-from schemas.project import ProjectCreate, ProjectResponse
-from db.models.user import User
-from db.models.project import Project
-from api.v1.dependencies import get_current_user
+from server.config.database import get_db
+from server.schemas.project import ProjectCreate, ProjectResponse
+from server.db.models.user import User
+from server.db.models.project import Project
+from server.api.v1.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -83,4 +83,5 @@ async def rename_project(
 
     await db.commit()
     await db.refresh(project)
+
     return project
