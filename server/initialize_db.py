@@ -1,7 +1,7 @@
 import asyncio
 import os
-from alembic import command
-from alembic.config import Config
+from server.db.migrations.alembic import command
+from server.db.migrations.alembic.config import Config
 
 async def run_migrations():
     alembic_cfg = Config("alembic.ini")
