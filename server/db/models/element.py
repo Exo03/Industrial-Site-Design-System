@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
-from db.base import Base
+from server.db.base import Base
 
 class Element(Base):
     __tablename__ = "elements"
@@ -17,3 +17,4 @@ class Element(Base):
     )
 
     project = relationship("Project", back_populates="elements")
+
