@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # БД
     POSTGRES_USER: str = "user"
     POSTGRES_PASSWORD: str = 'J73ZyKfifH8x1AB4kYuNWvrQ9K6OA5VZ'
-    POSTGRES_HOST: str = "dpg-d4iurf15pdvs7385ojl0-a"
+    POSTGRES_HOST: str = "dpg-d4iurf15pdvs7385ojl0-a.oregon-postgres.render.com"
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "industrial_site_design_system"
 

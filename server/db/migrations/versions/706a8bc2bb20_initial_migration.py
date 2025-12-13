@@ -26,7 +26,6 @@ def upgrade() -> None:
                nullable=True)
     op.create_index(op.f('ix_elements_id'), 'elements', ['id'], unique=False)
     op.create_index(op.f('ix_elements_project_id'), 'elements', ['project_id'], unique=False)
-    op.create_unique_constraint('unique_coordinates_per_project', 'elements', ['x', 'y', 'project_id'])
     op.drop_constraint(op.f('elements_project_id_fkey'), 'elements', type_='foreignkey')
     op.create_foreign_key(None, 'elements', 'projects', ['project_id'], ['id'], ondelete='CASCADE')
     op.alter_column('projects', 'name',

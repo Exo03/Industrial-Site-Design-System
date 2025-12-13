@@ -11,9 +11,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from db.base import Base
 
 # Импортируем все модели, чтобы они были доступны для Alembic
-from db.models.user import User
-from db.models.element import Element  
-from db.models.project import Project
+from server.db.models.user import User
+from server.db.models.element import Element  
+from server.db.models.project import Project
 
 # this is the Alembic Config object
 config = context.config

@@ -3,55 +3,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, exists
 from sqlalchemy.exc import IntegrityError
 from server.config.database import get_db
-from server.schemas.element import ElementCreate, ElementResponse, ElementUpdate
+from server.schemas.element import ElementCreate, ElementResponse, ElementMove, ElementResize
 from server.db.models.element import Element
 from server.db.models.project import Project
 from server.api.v1.dependencies import get_current_user
 from server.db.models.user import User
+from server.services.elements import add_element_to_project
 
 router = APIRouter()
 
 @router.post("/add_element", response_model=ElementResponse)
-async def add_element_to_project(
-    element: ElementCreate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-
-    project_result = await db.execute(
-        select(Project).where(
-            Project.id == element.project_id,
-            Project.owner_id == current_user.id
-        )
-    )
-    project = project_result.scalar_one_or_none()
-    
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found or access denied"
-        )
-    
-    try:
-        new_element = Element(
-            element_type_id=element.element_type_id,
-            x=element.x,
-            y=element.y,
-            project_id=element.project_id,
-            rotation=0
-        )
-        
-        db.add(new_element)
-        await db.commit()
-        await db.refresh(new_element)
-        return new_element
-        
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Element with these coordinates already exists in this project"
-        )
+add_element_to_project()
 
 @router.get("/project/{project_id}/elements", response_model=list[ElementResponse])
 async def get_project_elements(
@@ -111,7 +73,7 @@ async def delete_element(
 
 @router.put("/move_element/{element_id}", response_model=ElementResponse)
 async def move_element(
-    new_element: ElementUpdate,
+    new_element: ElementMove,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -131,24 +93,67 @@ async def move_element(
 
     if not project:
         raise HTTPException(status_code=403, detail="Access denied")
-    
-    conflict_exists = await db.execute(
-        select(exists().where(
-            Element.project_id == element.project_id,
-            Element.x == new_element.x,
-            Element.y == new_element.y,
-            Element.id != element.id
-        ))
-    )
-    if conflict_exists.scalar():
-        raise HTTPException(status_code=400, detail="В этом проекте уже есть элемент с такими координатами")
 
     element.x = new_element.x
     element.y = new_element.y
-    element.rotation = new_element.rotation
 
     await db.commit()
     await db.refresh(element)
 
     return element
 
+@router.put("/resize_element/{element_id}", response_model=ElementResponse)
+async def resize_element(
+    new_size: ElementResize,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Element).where(Element.id == new_size.id))
+    element = result.scalar_one_or_none()
+
+    if not element:
+        raise HTTPException(status_code=404, detail="Элемент не найден")
+    
+    result = await db.execute(
+        select(Project).where(
+            Project.id == element.project_id,
+            Project.owner_id == current_user.id
+        )
+    )
+    project = result.scalar_one_or_none()
+
+    if not project:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    element.width = new_size.width
+    element.length = new_size.length
+
+    await db.commit()
+    await db.refresh(element)
+
+    return element
+
+@router.get("/element/{element_id}", response_model=ElementResponse)
+async def get_element(
+    element_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Element).where(Element.id == element_id))
+    element = result.scalar_one_or_none()
+
+    if not element:
+        raise HTTPException(status_code=404, detail="Элемент не найден")
+
+    result = await db.execute(
+        select(Project).where(
+            Project.id == element.project_id,
+            Project.owner_id == current_user.id
+        )
+    )
+    project = result.scalar_one_or_none()
+
+    if not project:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return element

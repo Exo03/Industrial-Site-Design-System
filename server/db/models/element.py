@@ -10,11 +10,8 @@ class Element(Base):
     element_type_id = Column(Integer)
     x = Column(Integer)
     y = Column(Integer)
-    rotation = Column(Integer)
-
-    __table_args__ = (
-        UniqueConstraint('x', 'y', 'project_id', name = "unique_coordinates_per_project"),
-    )
+    length = Column(Integer)
+    width = Column(Integer)
 
     project = relationship("Project", back_populates="elements")
 

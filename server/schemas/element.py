@@ -5,19 +5,26 @@ class ElementCreate(BaseModel):
     element_type_id: int
     x: int
     y: int
+    width: int
+    length: int
 
 class ElementResponse(BaseModel):
     id: int
     element_type_id: int
     x: int
     y: int
-    rotation: int
+    width: int
+    length: int
 
     class Config:
         from_attributes = True
 
-class ElementUpdate(BaseModel):
+class ElementMove(BaseModel):
     id: int
     x: int
     y: int
-    rotation: int
+
+class ElementResize(BaseModel):
+    id: int
+    width: int
+    length: int

@@ -9,7 +9,9 @@ class Project(Base):
         name = Column(String)
         description = Column(String)
         owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
-        
+        length = Column(Integer)
+        width = Column(Integer)
+
         elements = relationship("Element", back_populates="project", cascade="all, delete-orphan")
 
         user = relationship("User", back_populates="projects")

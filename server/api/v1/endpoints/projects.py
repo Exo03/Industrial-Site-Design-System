@@ -19,7 +19,9 @@ async def create_project(
     new_project = Project(
         name=project.name,
         description=project.description,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        width=project.width,
+        length=project.length
     )
     
     db.add(new_project)
@@ -83,5 +85,22 @@ async def rename_project(
 
     await db.commit()
     await db.refresh(project)
+
+    return project
+
+@router.get("/project/{project_id}", response_model=ProjectResponse)
+async def get_project(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Project).where(
+        Project.id == project_id,
+        Project.owner_id == current_user.id
+    ))
+
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
 
     return project
