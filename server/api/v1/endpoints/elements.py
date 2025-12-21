@@ -8,12 +8,56 @@ from server.db.models.element import Element
 from server.db.models.project import Project
 from server.api.v1.dependencies import get_current_user
 from server.db.models.user import User
-from server.services.elements import add_element_to_project
+from server.services import ElementService
 
 router = APIRouter()
 
 @router.post("/add_element", response_model=ElementResponse)
-add_element_to_project()
+async def add_element_to_project(
+    element: ElementCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+
+    project_result = await db.execute(
+        select(Project).where(
+            Project.id == element.project_id,
+            Project.owner_id == current_user.id
+        )
+    )
+    project = project_result.scalar_one_or_none()
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Project not found or access denied"
+        )
+    
+    if await ElementService.check_element_overlap(db, element.x, element.y, element.width, element.length, element.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New element overlaps with existing element"
+        )
+    
+    if not await ElementService.check_element_border(element.x, element.y, element.width, element.length, project.width, project.length):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New position overlaps project border"
+        )
+
+    new_element = Element(
+        element_type_id=element.element_type_id,
+        x=element.x,
+        y=element.y,
+        width=element.width,
+        length=element.length,
+        project_id=element.project_id,
+    )
+        
+    db.add(new_element)
+    await db.commit()
+    await db.refresh(new_element)
+    return new_element
 
 @router.get("/project/{project_id}/elements", response_model=list[ElementResponse])
 async def get_project_elements(
@@ -94,6 +138,18 @@ async def move_element(
     if not project:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    if await ElementService.check_element_overlap(db, new_element.x, new_element.y, element.width, element.length, element.project_id, element.id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New position overlaps with existing element"
+        )
+
+    if not await ElementService.check_element_border(new_element.x, new_element.y, element.width, element.length, project.width, project.length):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New position overlaps project border"
+        )
+
     element.x = new_element.x
     element.y = new_element.y
 
@@ -124,6 +180,18 @@ async def resize_element(
 
     if not project:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    if await ElementService.check_element_overlap(db, element.x, element.y, new_size.width, new_size.length, element.project_id, element.id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New size overlaps with existing element"
+        )
+
+    if not await ElementService.check_element_border(element.x, element.y, new_size.width, new_size.length, project.width, project.length):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New size overlaps project border"
+        )
 
     element.width = new_size.width
     element.length = new_size.length
