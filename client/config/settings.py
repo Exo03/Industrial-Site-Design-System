@@ -1,0 +1,1 @@
+API_BASE_URL = "https://industrial-site-design-system.onrender.com"
