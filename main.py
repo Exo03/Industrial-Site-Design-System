@@ -1,11 +1,10 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, \
-    QGraphicsItem, QDialog, QColorDialog
+    QGraphicsItem, QDialog, QColorDialog, QVBoxLayout, QLabel, QGraphicsItemGroup
 from PySide6.QtGui import QBrush, QColor, QFont, QPen, QFontMetrics, Qt
 
 from UI_Files.EditObjectWindow import Ui_Object_edit
 from UI_Files.MainWindow import Ui_MainWindow
 
-# Этот класс сгенерирован ИИ
 class EditObjectWindow(QDialog):
     def __init__(self, parent=None, initial_text="", initial_length=120, initial_width=80, initial_color="#96C8FF"):
         super().__init__(parent)
@@ -18,7 +17,7 @@ class EditObjectWindow(QDialog):
         self._initial_width = initial_width
         self._initial_color = initial_color
 
-        # Заполняем поля — ВСЕ через self.ui.*
+        # Заполняем поля — через self.ui.*
         self.ui.textLineEdit.setText(initial_text)
         self.ui.lengthLineEdit.setText(str(initial_length))
         self.ui.widthLineEdit.setText(str(initial_width))
@@ -31,6 +30,7 @@ class EditObjectWindow(QDialog):
     def open_color_dialog(self):
         current_color = QColor(self.ui.colorDisplay.text().strip() or "#96C8FF")
         dialog = QColorDialog(current_color, self)
+        # Стилизуем под твою тему:
         dialog.setStyleSheet("""
             QDialog { background-color: #1E1E1E; color: #FFFFFF; }
             QLabel { color: #FFFFFF; }
@@ -144,12 +144,16 @@ class CanvasWindow(QMainWindow):
 
     # Метод сгенерирован ИИ
     def edit_object(self):
-
+        print("🔧 edit_object: started")
         selected = self.scene.selectedItems()
+        print(f"🔧 Selected items: {len(selected)}")
+        for i, item in enumerate(selected):
+            print(f"  [{i}] Type: {type(item).__name__}")
+
         if not selected:
+            print("⚠️ No items selected")
             return
 
-        # Ищем прямоугольник и связанный с ним текст (по позиции)
         rect_item = None
         text_item = None
 
@@ -158,21 +162,32 @@ class CanvasWindow(QMainWindow):
                 rect_item = item
             elif isinstance(item, QGraphicsTextItem):
                 text_item = item
+            elif isinstance(item, QGraphicsItemGroup):
+                # Ищем rect и text внутри группы
+                for child in item.childItems():
+                    if isinstance(child, QGraphicsRectItem):
+                        rect_item = child
+                    elif isinstance(child, QGraphicsTextItem):
+                        text_item = child
 
         if not rect_item:
+            print("⚠️ No rect item found")
             return
 
-        # Текущие параметры прямоугольника
+        # Получаем текущие параметры
         rect = rect_item.rect()
         x, y = rect_item.pos().x(), rect_item.pos().y()
-        current_length = int(rect.width())  # ← в UI "Длина" = ширина прямоугольника
-        current_width = int(rect.height())  # ← "Ширина" = высота
+        current_length = int(rect.width())
+        current_width = int(rect.height())
         current_color = rect_item.brush().color().name()
 
         # Текущий текст (если есть)
         current_text = text_item.toPlainText() if text_item else ""
 
-        # Открываем диалог
+        print(
+            f"🔧 Opening dialog with: text='{current_text}', L={current_length}, W={current_width}, color={current_color}")
+
+        # Создаём диалог
         dialog = EditObjectWindow(
             self,
             initial_text=current_text,
@@ -181,54 +196,54 @@ class CanvasWindow(QMainWindow):
             initial_color=current_color
         )
 
-        if dialog.exec() != QDialog.Accepted:
-            return
+        result = dialog.exec()
+        print(f"Dialog result: {result}")
 
-        changes = dialog.get_data()
-        if not changes:
-            return
+        if result == QDialog.Accepted:
+            changes = dialog.get_data()
+            print(f"Changes: {changes}")
+            if not changes:
+                print("No changes to apply")
+                return
 
-        # ——— Применяем изменения ———
-        # 1. Размеры
-        new_rect = rect_item.rect()
-        if "length" in changes:
-            new_rect.setWidth(changes["length"])
-        if "width" in changes:
-            new_rect.setHeight(changes["width"])
-        if "length" in changes or "width" in changes:
+            # Применяем изменения
+            new_rect = rect_item.rect()
+            if "length" in changes:
+                new_rect.setWidth(changes["length"])
+            if "width" in changes:
+                new_rect.setHeight(changes["width"])
             rect_item.setRect(new_rect)
 
-        # 2. Цвет
-        if "color" in changes:
-            color = QColor(changes["color"])
-            rect_item.setBrush(QBrush(color))
-            rect_item.setPen(QPen(QColor(0, 0, 0, 150)))
+            if "color" in changes:
+                color = QColor(changes["color"])
+                rect_item.setBrush(QBrush(color))
+                rect_item.setPen(QPen(QColor(0, 0, 0, 150)))
 
-        # 3. Текст
-        if "text" in changes:
-            new_text = changes["text"]
-            if text_item:
-                # Обновляем существующий
-                text_item.setPlainText(new_text)
-                # Перепозиционируем (на случай изменения размеров)
-                br = text_item.boundingRect()
-                tx = x + (new_rect.width() - br.width()) / 2
-                ty = y + (new_rect.height() - br.height()) / 2
-                text_item.setPos(tx, ty)
-            elif new_text.strip():
-                # Создаём новый текст
-                text_item = QGraphicsTextItem(new_text)
-                font = text_item.font()
-                font.setPointSize(9)
-                text_item.setFont(font)
-                text_item.setDefaultTextColor(QColor(0, 0, 0))
-                br = text_item.boundingRect()
-                tx = x + (new_rect.width() - br.width()) / 2
-                ty = y + (new_rect.height() - br.height()) / 2
-                text_item.setPos(tx, ty)
-                self.scene.addItem(text_item)
+            if "text" in changes:
+                new_text = changes["text"]
+                if text_item:
+                    text_item.setPlainText(new_text)
+                    # Перепозиционируем
+                    br = text_item.boundingRect()
+                    tx = x + (new_rect.width() - br.width()) / 2
+                    ty = y + (new_rect.height() - br.height()) / 2
+                    text_item.setPos(tx, ty)
+                elif new_text.strip():
+                    # Создаём новый текст
+                    new_text_item = QGraphicsTextItem(new_text)
+                    font = new_text_item.font()
+                    font.setPointSize(9)
+                    new_text_item.setFont(font)
+                    new_text_item.setDefaultTextColor(QColor(0, 0, 0))
+                    br = new_text_item.boundingRect()
+                    tx = x + (new_rect.width() - br.width()) / 2
+                    ty = y + (new_rect.height() - br.height()) / 2
+                    new_text_item.setPos(tx, ty)
+                    self.scene.addItem(new_text_item)
 
-        self.scene.update()
+            self.scene.update()
+        else:
+            print("Dialog cancelled")
 
     def delete_object(self):
         for item in self.scene.selectedItems():
