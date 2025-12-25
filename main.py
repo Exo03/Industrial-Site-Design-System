@@ -103,44 +103,36 @@ class CanvasWindow(QMainWindow):
         self.ui.actionEditObject.triggered.connect(self.edit_object)
         self.ui.actionDeleteObject.triggered.connect(self.delete_object)
 
+    #Метод сгенерирован ИИ
     def add_object(self):
-        selected_type = self.ui.comboBox.currentText()
-        if not selected_type.strip():
-            selected_type = "Объект"
+        selected_type = self.ui.comboBox.currentText().strip() or "Объект"
 
-        x_pos = 200
-        y_pos = 200
-        rect_width = 120
-        rect_height = 80
+        rect_w, rect_h = 120, 80
         rect_color = QColor(150, 200, 255)
 
-        new_rect = QGraphicsRectItem(x_pos, y_pos, rect_width, rect_height)
-        new_rect.setBrush(QBrush(rect_color))
-        new_rect.setPen(QPen(QColor(0, 0, 0, 150)))
-        new_rect.setFlags(
-            QGraphicsRectItem.ItemIsMovable |
-            QGraphicsRectItem.ItemIsSelectable
-        )
-        self.scene.addItem(new_rect)
+        # 1. создаём элементы, но НЕ добавляем в сцену
+        rect_item = QGraphicsRectItem(0, 0, rect_w, rect_h)
+        rect_item.setBrush(QBrush(rect_color))
+        rect_item.setPen(QPen(QColor(0, 0, 0, 150)))
 
-        text_item = QGraphicsTextItem(selected_type)
+        text_item = QGraphicsTextItem()
+        text_item.setPlainText(selected_type)
         font = QFont()
-        fm = QFontMetrics(font)
-        elided_text = fm.elidedText(selected_type, Qt.ElideRight, rect_width - 8)
-        text_item.setPlainText(elided_text)
         font.setPointSize(9)
         text_item.setFont(font)
         text_item.setDefaultTextColor(QColor(0, 0, 0))
 
-        text_rect = text_item.boundingRect()
-        text_x = x_pos + (rect_width - text_rect.width()) / 2
-        text_y = y_pos + (rect_height - text_rect.height()) / 2
-        text_item.setPos(text_x, text_y)
+        br = text_item.boundingRect()
+        text_item.setPos((rect_w - br.width()) / 2,
+                         (rect_h - br.height()) / 2)
 
-        self.scene.addItem(text_item)
-
-        group = self.scene.createItemGroup([new_rect, text_item])
-        group.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
+        # 2. СНАЧАЛА добавляем в сцену группу, а потом уже в неё элементы
+        group = self.scene.createItemGroup([])
+        group.addToGroup(rect_item)
+        group.addToGroup(text_item)
+        group.setFlags(QGraphicsItem.ItemIsMovable |
+                       QGraphicsItem.ItemIsSelectable)
+        group.setPos(200, 200)
 
     # Метод сгенерирован ИИ
     def edit_object(self):
@@ -156,6 +148,7 @@ class CanvasWindow(QMainWindow):
 
         rect_item = None
         text_item = None
+        group_item = None
 
         for item in selected:
             if isinstance(item, QGraphicsRectItem):
@@ -169,25 +162,28 @@ class CanvasWindow(QMainWindow):
                         rect_item = child
                     elif isinstance(child, QGraphicsTextItem):
                         text_item = child
+                group_item = item
 
         if not rect_item:
             print("⚠️ No rect item found")
             return
 
-        # Получаем текущие параметры
+        # ——— ПРАВИЛЬНОЕ ПОЛУЧЕНИЕ ГЛОБАЛЬНОЙ ПОЗИЦИИ ———
+        if group_item:
+            # Получаем глобальную позицию левого верхнего угла прямоугольника
+            top_left = rect_item.mapToScene(0, 0)
+            scene_x, scene_y = top_left.x(), top_left.y()
+        else:
+            scene_x, scene_y = rect_item.pos().x(), rect_item.pos().y()
+
+        # ——— ПОЛУЧАЕМ ТЕКУЩИЕ ПАРАМЕТРЫ ———
         rect = rect_item.rect()
-        x, y = rect_item.pos().x(), rect_item.pos().y()
         current_length = int(rect.width())
         current_width = int(rect.height())
         current_color = rect_item.brush().color().name()
-
-        # Текущий текст (если есть)
         current_text = text_item.toPlainText() if text_item else ""
 
-        print(
-            f"🔧 Opening dialog with: text='{current_text}', L={current_length}, W={current_width}, color={current_color}")
-
-        # Создаём диалог
+        # Открываем диалог
         dialog = EditObjectWindow(
             self,
             initial_text=current_text,
@@ -196,54 +192,66 @@ class CanvasWindow(QMainWindow):
             initial_color=current_color
         )
 
-        result = dialog.exec()
-        print(f"Dialog result: {result}")
-
-        if result == QDialog.Accepted:
-            changes = dialog.get_data()
-            print(f"Changes: {changes}")
-            if not changes:
-                print("No changes to apply")
-                return
-
-            # Применяем изменения
-            new_rect = rect_item.rect()
-            if "length" in changes:
-                new_rect.setWidth(changes["length"])
-            if "width" in changes:
-                new_rect.setHeight(changes["width"])
-            rect_item.setRect(new_rect)
-
-            if "color" in changes:
-                color = QColor(changes["color"])
-                rect_item.setBrush(QBrush(color))
-                rect_item.setPen(QPen(QColor(0, 0, 0, 150)))
-
-            if "text" in changes:
-                new_text = changes["text"]
-                if text_item:
-                    text_item.setPlainText(new_text)
-                    # Перепозиционируем
-                    br = text_item.boundingRect()
-                    tx = x + (new_rect.width() - br.width()) / 2
-                    ty = y + (new_rect.height() - br.height()) / 2
-                    text_item.setPos(tx, ty)
-                elif new_text.strip():
-                    # Создаём новый текст
-                    new_text_item = QGraphicsTextItem(new_text)
-                    font = new_text_item.font()
-                    font.setPointSize(9)
-                    new_text_item.setFont(font)
-                    new_text_item.setDefaultTextColor(QColor(0, 0, 0))
-                    br = new_text_item.boundingRect()
-                    tx = x + (new_rect.width() - br.width()) / 2
-                    ty = y + (new_rect.height() - br.height()) / 2
-                    new_text_item.setPos(tx, ty)
-                    self.scene.addItem(new_text_item)
-
-            self.scene.update()
-        else:
+        if dialog.exec() != QDialog.Accepted:
             print("Dialog cancelled")
+            return
+
+        changes = dialog.get_data()
+        print(f"Changes: {changes}")
+        if not changes:
+            print("No changes to apply")
+            return
+
+        # ——— ПРИМЕНЯЕМ ИЗМЕНЕНИЯ ———
+        new_rect = rect_item.rect()
+        if "length" in changes:
+            new_rect.setWidth(changes["length"])
+        if "width" in changes:
+            new_rect.setHeight(changes["width"])
+        rect_item.setRect(new_rect)
+
+        if group_item:
+            # 1. запоминаем позицию и состав
+            old_pos = group_item.pos()
+            items = group_item.childItems()  # прямоугольник + текст
+            # 2. удаляем старую группу
+            self.scene.destroyItemGroup(group_item)
+            # 3. создаём новую с тем же составом
+            group_item = self.scene.createItemGroup(items)
+            group_item.setPos(old_pos)
+            group_item.setFlags(QGraphicsItem.ItemIsMovable |
+                                QGraphicsItem.ItemIsSelectable)
+
+        # Цвет
+        if "color" in changes:
+            color = QColor(changes["color"])
+            rect_item.setBrush(QBrush(color))
+            rect_item.setPen(QPen(QColor(0, 0, 0, 150)))
+
+        # Текст
+        if "text" in changes:
+            new_text = changes["text"]
+
+            # 1. создаём текст, если его нет
+            if not text_item and new_text.strip():
+                text_item = QGraphicsTextItem()
+                font = QFont()
+                font.setPointSize(9)
+                text_item.setFont(font)
+                text_item.setDefaultTextColor(QColor(0, 0, 0))
+                group_item.addToGroup(text_item)
+
+            if text_item:
+                text_item.setPlainText(new_text)
+                br = text_item.boundingRect()
+
+                top_left_rect = rect_item.pos()
+                dx = top_left_rect.x() + (new_rect.width() - br.width()) / 2
+                dy = top_left_rect.y() + (new_rect.height() - br.height()) / 2
+                text_item.setPos(dx, dy)
+
+        self.scene.update()
+        print("✅ edit_object: completed")
 
     def delete_object(self):
         for item in self.scene.selectedItems():
