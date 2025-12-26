@@ -11,6 +11,7 @@ async def register(email: str, username: str, password: str) -> dict:
                 "password": password,
             }
         )
+    response.raise_for_status()
     return response.json()
 
 async def login(username: str, password: str) -> dict:
