@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # БД
     POSTGRES_USER: str = "klim"
     POSTGRES_PASSWORD: str = '6861'
-    POSTGRES_HOST: str = "localhost"
+    POSTGRES_HOST: str = "85.172.77.253"
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "Industrial-Site-Design-System"
 
