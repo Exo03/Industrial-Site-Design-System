@@ -1,3 +1,4 @@
+from PyQt6.QtCore import QPointF
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, \
     QGraphicsItem, QDialog, QColorDialog, QVBoxLayout, QLabel, QGraphicsItemGroup
 from PySide6.QtGui import QBrush, QColor, QFont, QPen, QFontMetrics, Qt
@@ -132,77 +133,60 @@ class CanvasWindow(QMainWindow):
         group.addToGroup(text_item)
         group.setFlags(QGraphicsItem.ItemIsMovable |
                        QGraphicsItem.ItemIsSelectable)
-        group.setPos(200, 200)
+        group.setPos(400, 400)
 
     # Метод сгенерирован ИИ
+    # ---------- edit_object ----------
     def edit_object(self):
         print("🔧 edit_object: started")
         selected = self.scene.selectedItems()
-        print(f"🔧 Selected items: {len(selected)}")
-        for i, item in enumerate(selected):
-            print(f"  [{i}] Type: {type(item).__name__}")
-
         if not selected:
             print("⚠️ No items selected")
             return
 
-        rect_item = None
-        text_item = None
-        group_item = None
-
+        # 1. находим rect и text (внутри группы или снаружи)
+        rect_item = text_item = group_item = None
         for item in selected:
-            if isinstance(item, QGraphicsRectItem):
+            if isinstance(item, QGraphicsItemGroup):
+                group_item = item
+                for ch in item.childItems():
+                    if isinstance(ch, QGraphicsRectItem):
+                        rect_item = ch
+                    elif isinstance(ch, QGraphicsTextItem):
+                        text_item = ch
+            elif isinstance(item, QGraphicsRectItem):
                 rect_item = item
             elif isinstance(item, QGraphicsTextItem):
                 text_item = item
-            elif isinstance(item, QGraphicsItemGroup):
-                # Ищем rect и text внутри группы
-                for child in item.childItems():
-                    if isinstance(child, QGraphicsRectItem):
-                        rect_item = child
-                    elif isinstance(child, QGraphicsTextItem):
-                        text_item = child
-                group_item = item
 
-        if not rect_item:
+        if not rect_item:  # главное – прямоугольник
             print("⚠️ No rect item found")
             return
 
-        # ——— ПРАВИЛЬНОЕ ПОЛУЧЕНИЕ ГЛОБАЛЬНОЙ ПОЗИЦИИ ———
-        if group_item:
-            # Получаем глобальную позицию левого верхнего угла прямоугольника
-            top_left = rect_item.mapToScene(0, 0)
-            scene_x, scene_y = top_left.x(), top_left.y()
-        else:
-            scene_x, scene_y = rect_item.pos().x(), rect_item.pos().y()
+        # 2. запоминаем ГЛОБАЛЬНУЮ позицию левого-верхнего угла прямоугольника
+        old_top_left = rect_item.mapToScene(0, 0)
 
-        # ——— ПОЛУЧАЕМ ТЕКУЩИЕ ПАРАМЕТРЫ ———
+        # 3. текущие параметры
         rect = rect_item.rect()
-        current_length = int(rect.width())
-        current_width = int(rect.height())
-        current_color = rect_item.brush().color().name()
-        current_text = text_item.toPlainText() if text_item else ""
+        cur_w, cur_h = int(rect.width()), int(rect.height())
+        cur_color = rect_item.brush().color().name()
+        cur_text = text_item.toPlainText() if text_item else ""
 
-        # Открываем диалог
-        dialog = EditObjectWindow(
-            self,
-            initial_text=current_text,
-            initial_length=current_length,
-            initial_width=current_width,
-            initial_color=current_color
-        )
-
-        if dialog.exec() != QDialog.Accepted:
-            print("Dialog cancelled")
+        # 4. диалог
+        dlg = EditObjectWindow(self,
+                               initial_text=cur_text,
+                               initial_length=cur_w,
+                               initial_width=cur_h,
+                               initial_color=cur_color)
+        if dlg.exec() != QDialog.Accepted:
             return
 
-        changes = dialog.get_data()
-        print(f"Changes: {changes}")
+        changes = dlg.get_data()
+        print("Changes:", changes)
         if not changes:
-            print("No changes to apply")
             return
 
-        # ——— ПРИМЕНЯЕМ ИЗМЕНЕНИЯ ———
+        # 5. новый размер
         new_rect = rect_item.rect()
         if "length" in changes:
             new_rect.setWidth(changes["length"])
@@ -210,45 +194,52 @@ class CanvasWindow(QMainWindow):
             new_rect.setHeight(changes["width"])
         rect_item.setRect(new_rect)
 
-        if group_item:
-            # 1. запоминаем позицию и состав
-            old_pos = group_item.pos()
-            items = group_item.childItems()  # прямоугольник + текст
-            # 2. удаляем старую группу
-            self.scene.destroyItemGroup(group_item)
-            # 3. создаём новую с тем же составом
-            group_item = self.scene.createItemGroup(items)
-            group_item.setPos(old_pos)
-            group_item.setFlags(QGraphicsItem.ItemIsMovable |
-                                QGraphicsItem.ItemIsSelectable)
-
-        # Цвет
+        # 6. цвет
         if "color" in changes:
-            color = QColor(changes["color"])
-            rect_item.setBrush(QBrush(color))
+            c = QColor(changes["color"])
+            rect_item.setBrush(QBrush(c))
             rect_item.setPen(QPen(QColor(0, 0, 0, 150)))
 
-        # Текст
+        # 7. текст
         if "text" in changes:
-            new_text = changes["text"]
-
-            # 1. создаём текст, если его нет
-            if not text_item and new_text.strip():
+            new_txt = changes["text"]
+            if not text_item and new_txt.strip():  # создаём, если не было
                 text_item = QGraphicsTextItem()
                 font = QFont()
                 font.setPointSize(9)
                 text_item.setFont(font)
                 text_item.setDefaultTextColor(QColor(0, 0, 0))
-                group_item.addToGroup(text_item)
+                (group_item.addToGroup(text_item) if group_item
+                 else self.scene.addItem(text_item))
 
             if text_item:
-                text_item.setPlainText(new_text)
+                text_item.setPlainText(new_txt)
                 br = text_item.boundingRect()
+                # центруем в локальных координатах прямоугольника
+                text_item.setPos((new_rect.width() - br.width()) / 2,
+                                 (new_rect.height() - br.height()) / 2)
 
-                top_left_rect = rect_item.pos()
-                dx = top_left_rect.x() + (new_rect.width() - br.width()) / 2
-                dy = top_left_rect.y() + (new_rect.height() - br.height()) / 2
-                text_item.setPos(dx, dy)
+        # 8. ВОССТАНАВЛИВАЕМ глобальное положение левого-верхнего угла
+        new_top_left = rect_item.mapToScene(0, 0)
+        delta = old_top_left - new_top_left
+
+        if group_item:
+            group_item.setPos(group_item.pos() + delta)
+
+            # сохраняем локальную позицию текста
+            text_local_pos = text_item.pos() if text_item else QPointF()
+
+            group_item.removeFromGroup(rect_item)
+            group_item.addToGroup(rect_item)
+
+            # возвращаем текст на место и поднимаем выше
+            if text_item:
+                text_item.setPos(text_local_pos)
+                text_item.setZValue(1)
+        else:
+            rect_item.setPos(rect_item.pos() + delta)
+            if text_item:
+                text_item.setPos(text_item.pos() + delta)
 
         self.scene.update()
         print("✅ edit_object: completed")
