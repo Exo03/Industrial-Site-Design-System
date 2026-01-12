@@ -52,6 +52,8 @@ async def add_element_to_project(
         width=element.width,
         length=element.length,
         project_id=element.project_id,
+        title = element.title,
+        color = element.color
     )
         
     db.add(new_element)

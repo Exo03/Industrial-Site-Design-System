@@ -12,11 +12,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # БД
-    POSTGRES_USER: str = "klim"
-    POSTGRES_PASSWORD: str = '6861'
-    POSTGRES_HOST: str = "85.172.77.253"
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = '9qBzPNiRIVVIq3Fa'
+    POSTGRES_HOST: str = "db.oxhflgxivmofhufhxpmd.supabase.co"
     POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "Industrial-Site-Design-System"
+    POSTGRES_DB: str = "postgres"
 
     @property
     def DATABASE_URL(self) -> str:

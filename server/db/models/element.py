@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint, String
 from sqlalchemy.orm import relationship
 from server.db.base import Base
 
@@ -12,6 +12,8 @@ class Element(Base):
     y = Column(Integer)
     length = Column(Integer)
     width = Column(Integer)
+    title = Column(String)
+    color = Column(String)
 
     project = relationship("Project", back_populates="elements")
 
