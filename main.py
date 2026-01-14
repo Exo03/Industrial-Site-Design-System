@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QPointF
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, \
     QGraphicsItem, QDialog, QColorDialog, QVBoxLayout, QLabel, QGraphicsItemGroup, QGraphicsView
-from PySide6.QtGui import QBrush, QColor, QFont, QPen, QFontMetrics, Qt, QTransform, QPainter
+from PySide6.QtGui import QBrush, QColor, QFont, QPen, QFontMetrics, Qt, QTransform, QPainter, QWheelEvent
 
 from UI_Files.EditObjectWindow import Ui_Object_edit
 from UI_Files.MainWindow import Ui_MainWindow
@@ -90,22 +90,54 @@ class EditObjectWindow(QDialog):
 
         return data
 
+#Класс сгенерирован ИИ
+
+class ZoomableGraphicsView(QGraphicsView):
+    def __init__(self, scene, parent=None):
+        super().__init__(scene, parent)
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setRenderHint(QPainter.RenderHint.Antialiasing)  # ← Исправлено!
+
+    def wheelEvent(self, event: QWheelEvent):
+        delta = event.angleDelta().y()
+        if delta == 0:
+            event.ignore()
+            return
+
+        zoom_factor = 1.25 if delta > 0 else 1 / 1.25
+        self.scale(zoom_factor, zoom_factor)
+        event.accept()
+
 class CanvasWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        # Удаляем старый graphicsView
         self.ui.graphicsView.setParent(None)
-        from PySide6.QtWidgets import QVBoxLayout
+        self.ui.graphicsView.deleteLater()
+
+        # Создаём новую сцену
+        self.scene = QGraphicsScene()
+        self.scene.setSceneRect(0, 0, 1000, 1000)
+
+        # Создаём масштабируемый view
+        self.graphicsView = ZoomableGraphicsView(self.scene, self.ui.centralwidget)
+
+        # Добавляем в layout
         layout = QVBoxLayout(self.ui.centralwidget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self.ui.graphicsView)
+        layout.addWidget(self.graphicsView)
 
-        self.scene = QGraphicsScene()
-        self.scene.setSceneRect(0, 0, 1000, 1000)
-        self.ui.graphicsView.setScene(self.scene)
+        # Центрируем
+        self.graphicsView.centerOn(500, 500)
+
+        self.ui.graphicsView = self.graphicsView
 
         self.ui.graphicsView.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.ui.graphicsView.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
