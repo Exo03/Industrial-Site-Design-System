@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QPointF
 from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, \
-    QGraphicsItem, QDialog, QColorDialog, QVBoxLayout, QLabel, QGraphicsItemGroup
-from PySide6.QtGui import QBrush, QColor, QFont, QPen, QFontMetrics, Qt
+    QGraphicsItem, QDialog, QColorDialog, QVBoxLayout, QLabel, QGraphicsItemGroup, QGraphicsView
+from PySide6.QtGui import QBrush, QColor, QFont, QPen, QFontMetrics, Qt, QTransform, QPainter
 
 from UI_Files.EditObjectWindow import Ui_Object_edit
 from UI_Files.MainWindow import Ui_MainWindow
@@ -96,9 +96,26 @@ class CanvasWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        self.ui.graphicsView.setParent(None)
+        from PySide6.QtWidgets import QVBoxLayout
+        layout = QVBoxLayout(self.ui.centralwidget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self.ui.graphicsView)
+
         self.scene = QGraphicsScene()
         self.scene.setSceneRect(0, 0, 1000, 1000)
         self.ui.graphicsView.setScene(self.scene)
+
+        self.ui.graphicsView.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.ui.graphicsView.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
+        self.ui.graphicsView.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
+        self.ui.graphicsView.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.ui.graphicsView.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        self.ui.graphicsView.setTransform(QTransform())
+
+        self.ui.graphicsView.centerOn(500, 500)
 
         self.ui.actionAddObject.triggered.connect(self.add_object)
         self.ui.actionEditObject.triggered.connect(self.edit_object)
