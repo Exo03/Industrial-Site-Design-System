@@ -1,7 +1,11 @@
-from PyQt6.QtCore import QPointF
-from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, \
-    QGraphicsItem, QDialog, QColorDialog, QVBoxLayout, QLabel, QGraphicsItemGroup, QGraphicsView
-from PySide6.QtGui import QBrush, QColor, QFont, QPen, QFontMetrics, Qt, QTransform, QPainter, QWheelEvent
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPen, QPainter, QWheelEvent, QTransform
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QGraphicsScene, QGraphicsView,
+    QGraphicsItem, QGraphicsObject, QDialog, QColorDialog,
+    QVBoxLayout, QLabel, QStatusBar, QMenuBar, QMenu, QToolBar,
+    QWidget, QComboBox, QHBoxLayout
+)
 
 from UI_Files.EditObjectWindow import Ui_Object_edit
 from UI_Files.MainWindow import Ui_MainWindow
@@ -99,17 +103,143 @@ class ZoomableGraphicsView(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.setRenderHint(QPainter.RenderHint.Antialiasing)  # ← Исправлено!
+        self.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.setDragMode(QGraphicsView.DragMode.NoDrag)  # Управляем вручную
+        self._panning = False
+        self._last_pan_pos = None
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            self._panning = True
+            self._last_pan_pos = event.position()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._panning and self._last_pan_pos:
+            delta = event.position() - self._last_pan_pos
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() - int(delta.x())
+            )
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - int(delta.y())
+            )
+            self._last_pan_pos = event.position()
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            self._panning = False
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event: QWheelEvent):
-        delta = event.angleDelta().y()
-        if delta == 0:
-            event.ignore()
-            return
+        if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            delta = event.angleDelta().y()
+            if delta != 0:
+                zoom_factor = 1.25 if delta > 0 else 1 / 1.25
+                self.scale(zoom_factor, zoom_factor)
+                event.accept()
+        else:
+            # Прокрутка колёсиком без Ctrl
+            super().wheelEvent(event)
 
-        zoom_factor = 1.25 if delta > 0 else 1 / 1.25
-        self.scale(zoom_factor, zoom_factor)
-        event.accept()
+
+
+class GridScene(QGraphicsScene):
+    def __init__(self, grid_size=20, parent=None):
+        super().__init__(parent)
+        self._grid_size = grid_size
+        self.setSceneRect(0, 0, 1000, 1000)
+
+    def drawBackground(self, painter, rect):
+        # Вызываем родительский метод, если нужно
+        super().drawBackground(painter, rect)
+
+        # Настройка пера для сетки
+        grid_pen = QPen(QColor(60, 60, 60))  # Тёмно-серый
+        grid_pen.setWidth(1)
+        painter.setPen(grid_pen)
+
+        # Получаем видимую область
+        left = int(rect.left()) - (int(rect.left()) % self._grid_size)
+        top = int(rect.top()) - (int(rect.top()) % self._grid_size)
+
+        # Рисуем вертикальные линии
+        x = left
+        while x < rect.right():
+            painter.drawLine(x, rect.top(), x, rect.bottom())
+            x += self._grid_size
+
+        # Рисуем горизонтальные линии
+        y = top
+        while y < rect.bottom():
+            painter.drawLine(rect.left(), y, rect.right(), y)
+            y += self._grid_size
+
+
+
+class SnappableObject(QGraphicsObject):
+    def __init__(self, text="Объект", width=120, height=80, color="#96C8FF", grid_size=20, parent=None):
+        super().__init__(parent)
+        self._grid_size = grid_size
+        self._width = width
+        self._height = height
+        self._text = text
+        self._color = QColor(color)
+
+        # Флаги
+        self.setFlag(QGraphicsItem.ItemIsMovable, True)
+        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
+
+        # Отключаем кэширование, чтобы boundingRect обновлялся
+        self.setCacheMode(QGraphicsItem.CacheMode.DeviceCoordinateCache)
+
+    def boundingRect(self):
+        return QRectF(0, 0, self._width, self._height)
+
+    def paint(self, painter, option, widget=None):
+        # Рисуем прямоугольник
+        painter.setBrush(QBrush(self._color))
+        painter.setPen(QPen(QColor(0, 0, 0, 150)))
+        painter.drawRect(0, 0, self._width, self._height)
+
+        # Рисуем текст
+        font = painter.font()
+        font.setPointSize(9)
+        painter.setFont(font)
+        painter.setPen(QColor(0, 0, 0))
+        text_rect = QRectF(0, 0, self._width, self._height)
+        painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self._text)
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.ItemPositionChange and self.scene():
+            x = round(value.x() / self._grid_size) * self._grid_size
+            y = round(value.y() / self._grid_size) * self._grid_size
+            return QPointF(x, y)
+        return super().itemChange(change, value)
+
+    # Методы для редактирования
+    def update_text(self, text):
+        self._text = text
+        self.update()
+
+    def update_size(self, width, height):
+        self._width = width
+        self._height = height
+        self.prepareGeometryChange()
+        self.update()
+
+    def update_color(self, color):
+        self._color = QColor(color)
+        self.update()
 
 class CanvasWindow(QMainWindow):
     def __init__(self):
@@ -122,8 +252,7 @@ class CanvasWindow(QMainWindow):
         self.ui.graphicsView.deleteLater()
 
         # Создаём новую сцену
-        self.scene = QGraphicsScene()
-        self.scene.setSceneRect(0, 0, 1000, 1000)
+        self.scene = GridScene(grid_size=20)
 
         # Создаём масштабируемый view
         self.graphicsView = ZoomableGraphicsView(self.scene, self.ui.centralwidget)
@@ -156,36 +285,17 @@ class CanvasWindow(QMainWindow):
     #Метод сгенерирован ИИ
     def add_object(self):
         selected_type = self.ui.comboBox.currentText().strip() or "Объект"
-
-        rect_w, rect_h = 120, 80
-        rect_color = QColor(150, 200, 255)
-
-        # 1. создаём элементы, но НЕ добавляем в сцену
-        rect_item = QGraphicsRectItem(0, 0, rect_w, rect_h)
-        rect_item.setBrush(QBrush(rect_color))
-        rect_item.setPen(QPen(QColor(0, 0, 0, 150)))
-
-        text_item = QGraphicsTextItem()
-        text_item.setPlainText(selected_type)
-        font = QFont()
-        font.setPointSize(9)
-        text_item.setFont(font)
-        text_item.setDefaultTextColor(QColor(0, 0, 0))
-
-        br = text_item.boundingRect()
-        text_item.setPos((rect_w - br.width()) / 2,
-                         (rect_h - br.height()) / 2)
-
-        # 2. СНАЧАЛА добавляем в сцену группу, а потом уже в неё элементы
-        group = self.scene.createItemGroup([])
-        group.addToGroup(rect_item)
-        group.addToGroup(text_item)
-        group.setFlags(QGraphicsItem.ItemIsMovable |
-                       QGraphicsItem.ItemIsSelectable)
-        group.setPos(400, 400)
+        obj = SnappableObject(
+            text=selected_type,
+            width=120,
+            height=80,
+            color="#96C8FF",
+            grid_size=20
+        )
+        self.scene.addItem(obj)
+        obj.setPos(400, 400)
 
     # Метод сгенерирован ИИ
-    # ---------- edit_object ----------
     def edit_object(self):
         print("🔧 edit_object: started")
         selected = self.scene.selectedItems()
@@ -193,35 +303,18 @@ class CanvasWindow(QMainWindow):
             print("⚠️ No items selected")
             return
 
-        # 1. находим rect и text (внутри группы или снаружи)
-        rect_item = text_item = group_item = None
-        for item in selected:
-            if isinstance(item, QGraphicsItemGroup):
-                group_item = item
-                for ch in item.childItems():
-                    if isinstance(ch, QGraphicsRectItem):
-                        rect_item = ch
-                    elif isinstance(ch, QGraphicsTextItem):
-                        text_item = ch
-            elif isinstance(item, QGraphicsRectItem):
-                rect_item = item
-            elif isinstance(item, QGraphicsTextItem):
-                text_item = item
-
-        if not rect_item:  # главное – прямоугольник
-            print("⚠️ No rect item found")
+        item = selected[0]
+        if not isinstance(item, SnappableObject):
+            print("⚠️ Selected item is not editable")
             return
 
-        # 2. запоминаем ГЛОБАЛЬНУЮ позицию левого-верхнего угла прямоугольника
-        old_top_left = rect_item.mapToScene(0, 0)
+        # Текущие параметры
+        cur_text = item._text
+        cur_w = item._width
+        cur_h = item._height
+        cur_color = item._color.name()
 
-        # 3. текущие параметры
-        rect = rect_item.rect()
-        cur_w, cur_h = int(rect.width()), int(rect.height())
-        cur_color = rect_item.brush().color().name()
-        cur_text = text_item.toPlainText() if text_item else ""
-
-        # 4. диалог
+        # Диалог
         dlg = EditObjectWindow(self,
                                initial_text=cur_text,
                                initial_length=cur_w,
@@ -231,66 +324,24 @@ class CanvasWindow(QMainWindow):
             return
 
         changes = dlg.get_data()
-        print("Changes:", changes)
         if not changes:
             return
 
-        # 5. новый размер
-        new_rect = rect_item.rect()
-        if "length" in changes:
-            new_rect.setWidth(changes["length"])
-        if "width" in changes:
-            new_rect.setHeight(changes["width"])
-        rect_item.setRect(new_rect)
-
-        # 6. цвет
-        if "color" in changes:
-            c = QColor(changes["color"])
-            rect_item.setBrush(QBrush(c))
-            rect_item.setPen(QPen(QColor(0, 0, 0, 150)))
-
-        # 7. текст
+        # Применяем изменения
         if "text" in changes:
-            new_txt = changes["text"]
-            if not text_item and new_txt.strip():  # создаём, если не было
-                text_item = QGraphicsTextItem()
-                font = QFont()
-                font.setPointSize(9)
-                text_item.setFont(font)
-                text_item.setDefaultTextColor(QColor(0, 0, 0))
-                (group_item.addToGroup(text_item) if group_item
-                 else self.scene.addItem(text_item))
+            item.update_text(changes["text"])
+        if "length" in changes:
+            item._width = changes["length"]
+        if "width" in changes:
+            item._height = changes["width"]
+        if "color" in changes:
+            item.update_color(changes["color"])
 
-            if text_item:
-                text_item.setPlainText(new_txt)
-                br = text_item.boundingRect()
-                # центруем в локальных координатах прямоугольника
-                text_item.setPos((new_rect.width() - br.width()) / 2,
-                                 (new_rect.height() - br.height()) / 2)
+        # Обновляем геометрию
+        if "length" in changes or "width" in changes:
+            item.prepareGeometryChange()
+            item.update()
 
-        # 8. ВОССТАНАВЛИВАЕМ глобальное положение левого-верхнего угла
-        new_top_left = rect_item.mapToScene(0, 0)
-        delta = old_top_left - new_top_left
-
-        if group_item:
-            group_item.setPos(group_item.pos() + delta)
-
-            # сохраняем локальную позицию текста
-            text_local_pos = text_item.pos() if text_item else QPointF()
-
-            group_item.removeFromGroup(rect_item)
-            group_item.addToGroup(rect_item)
-
-            # возвращаем текст на место и поднимаем выше
-            if text_item:
-                text_item.setPos(text_local_pos)
-                text_item.setZValue(1)
-        else:
-            rect_item.setPos(rect_item.pos() + delta)
-            if text_item:
-                text_item.setPos(text_item.pos() + delta)
-
-        self.scene.update()
         print("✅ edit_object: completed")
 
     def delete_object(self):
