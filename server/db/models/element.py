@@ -7,7 +7,7 @@ class Element(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id", ondelete = "CASCADE"), index=True, nullable=False)
-    element_type_id = Column(Integer)
+    element_type_id = Column(Integer, ForeignKey("element_types.id"), index=True, nullable=False)
     x = Column(Integer)
     y = Column(Integer)
     length = Column(Integer)
