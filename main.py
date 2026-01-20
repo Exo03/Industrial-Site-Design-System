@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 
 from UI_Files.EditObjectWindow import Ui_Object_edit
 from UI_Files.MainWindow import Ui_MainWindow
+from UI_Files.SetArea import Ui_SetArea
 
 PIXELS_PER_METER = 20
 
@@ -253,6 +254,56 @@ class SnappableObject(QGraphicsObject):
         self._color = QColor(color)
         self.update()
 
+class SetAreaWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.ui = Ui_SetArea()
+        self.ui.setupUi(self)
+
+        # Установим валидаторы для полей
+        double_validator = QDoubleValidator(0.1, 9999.99, 2)
+        double_validator.setNotation(QDoubleValidator.StandardNotation)
+        double_validator.setLocale(QLocale(QLocale.English))
+
+        self.ui.widthLineEdit.setValidator(double_validator)
+        self.ui.heightLineEdit.setValidator(double_validator)
+
+    def get_values(self):
+        try:
+            width = float(self.ui.widthLineEdit.text())
+            height = float(self.ui.heightLineEdit.text())
+            return width, height
+        except ValueError:
+            return None, None
+
+class WorkspaceArea(QGraphicsObject):
+    def __init__(self, width_m, height_m, pixels_per_meter=PIXELS_PER_METER):
+        super().__init__()
+        self._width_m = width_m
+        self._height_m = height_m
+        self._pixels_per_meter = pixels_per_meter
+
+        # Запрещаем выделение и перемещение
+        self.setFlag(QGraphicsItem.ItemIsSelectable, False)
+        self.setFlag(QGraphicsItem.ItemIsMovable, False)
+        self.setFlag(QGraphicsItem.ItemIsFocusable, False)
+
+    def boundingRect(self):
+        w_px = self._width_m * self._pixels_per_meter
+        h_px = self._height_m * self._pixels_per_meter
+        return QRectF(0, 0, w_px, h_px)
+
+    def paint(self, painter, option, widget=None):
+        w_px = self._width_m * self._pixels_per_meter
+        h_px = self._height_m * self._pixels_per_meter
+
+        # Жирная рамка
+        pen = QPen(QColor(255, 255, 255))
+        pen.setWidth(3)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)  # Без заливки
+        painter.drawRect(0, 0, w_px, h_px)
+
 class CanvasWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -288,8 +339,33 @@ class CanvasWindow(QMainWindow):
         self.ui.actionAddObject.triggered.connect(self.add_object)
         self.ui.actionEditObject.triggered.connect(self.edit_object)
         self.ui.actionDeleteObject.triggered.connect(self.delete_object)
+        self.ui.actionSetArea.triggered.connect(self.set_area)
 
         self.statusBar().showMessage("Масштаб: 1 м = 20 пикс. | Сетка: 0.5 м (1 клетка)")
+
+    #Функция сгенерирована ИИ
+    def set_area(self):
+        dialog = SetAreaWindow(self)
+        if dialog.exec() == QDialog.Accepted:
+            width, height = dialog.get_values()
+            if width and height:
+                self.set_workspace_area(width, height)
+
+    def set_workspace_area(self, width_m, height_m):
+        # Удаляем старую площадку, если была
+        for item in self.scene.items():
+            if isinstance(item, WorkspaceArea):
+                self.scene.removeItem(item)
+
+        # Добавляем новую
+        area = WorkspaceArea(width_m, height_m)
+        self.scene.addItem(area)
+
+        # Центрируем площадку в сцене
+        scene_rect = self.scene.sceneRect()
+        center_x = scene_rect.width() / 2 - (width_m * PIXELS_PER_METER) / 2
+        center_y = scene_rect.height() / 2 - (height_m * PIXELS_PER_METER) / 2
+        area.setPos(center_x, center_y)
 
     #Метод сгенерирован ИИ
     def add_object(self):
