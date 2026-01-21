@@ -104,7 +104,7 @@ async def delete_element(
     await db.commit()
     return
 
-@router.put("/move_element/{element_id}", response_model=ElementResponse)
+@router.put("/move_element", response_model=ElementResponse)
 async def move_element(
     new_element: ElementMove,
     current_user: User = Depends(get_current_user),
@@ -135,7 +135,7 @@ async def move_element(
 
     return element
 
-@router.put("/resize_element/{element_id}", response_model=ElementResponse)
+@router.put("/resize_element", response_model=ElementResponse)
 async def resize_element(
     new_size: ElementResize,
     current_user: User = Depends(get_current_user),
