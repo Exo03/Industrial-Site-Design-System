@@ -204,6 +204,7 @@ class SnappableObject(QGraphicsObject):
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
 
         self._is_outside_area = False
+        self._is_overlapping = False  # Новое поле
 
     def _px(self, meters):
         return meters * self._pixels_per_meter
@@ -214,6 +215,11 @@ class SnappableObject(QGraphicsObject):
     def set_outside_area(self, is_outside: bool):
         if self._is_outside_area != is_outside:
             self._is_outside_area = is_outside
+            self.update()  # Перерисовать
+
+    def set_overlapping(self, is_overlapping: bool):
+        if self._is_overlapping != is_overlapping:
+            self._is_overlapping = is_overlapping
             self.update()  # Перерисовать
 
     def paint(self, painter, option, widget=None):
@@ -239,6 +245,15 @@ class SnappableObject(QGraphicsObject):
             pen.setWidth(1)
             pen.setStyle(Qt.DashLine)
             painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(0, 0, w_px, h_px)
+
+        # Рисуем жёлтую рамку, если пересекается с другим объектом
+        if self._is_overlapping:
+            yellow_pen = QPen(QColor(255, 255, 0))
+            yellow_pen.setWidth(2)
+            yellow_pen.setStyle(Qt.SolidLine)
+            painter.setPen(yellow_pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawRect(0, 0, w_px, h_px)
 
@@ -416,6 +431,23 @@ class CanvasWindow(QMainWindow):
         obj.set_outside_area(is_outside)
         return is_outside
 
+    def check_object_collisions(self):
+        objects = [item for item in self.scene.items() if isinstance(item, SnappableObject)]
+
+        for obj in objects:
+            obj.set_overlapping(False)
+
+        for i, obj1 in enumerate(objects):
+            for j, obj2 in enumerate(objects):
+                if i >= j:
+                    continue
+                obj1_rect = obj1.mapToScene(obj1.boundingRect()).boundingRect()
+                obj2_rect = obj2.mapToScene(obj2.boundingRect()).boundingRect()
+
+                if obj1_rect.intersects(obj2_rect):
+                    obj1.set_overlapping(True)
+                    obj2.set_overlapping(True)
+
     #Метод сгенерирован ИИ
     def add_object(self):
         selected_type = self.ui.comboBox.currentText().strip() or "Объект"
@@ -431,22 +463,35 @@ class CanvasWindow(QMainWindow):
         self.scene.addItem(obj)
         obj.setPos(400, 400)
         self.check_object_bounds(obj)
+        self.check_object_collisions()
         self.update_status_bar()
 
     def on_object_moved(self, obj):
         self.check_object_bounds(obj)
+        self.check_object_collisions()
         self.update_status_bar()
 
     #Сгенерировано ИИ
     def update_status_bar(self):
         area = self.get_workspace_area()
         outside_names = []
-        for item in self.scene.items():
-            if isinstance(item, SnappableObject) and item._is_outside_area:
-                outside_names.append(item._text)
+        overlapping_names = []
 
+        for item in self.scene.items():
+            if isinstance(item, SnappableObject):
+                if item._is_outside_area:
+                    outside_names.append(item._text)
+                if item._is_overlapping:
+                    overlapping_names.append(item._text)
+
+        messages = []
         if outside_names:
-            self.status_label.setText("⚠️ Вне площадки: " + ", ".join(outside_names))
+            messages.append("⚠️ Вне площадки: " + ", ".join(outside_names))
+        if overlapping_names:
+            messages.append("🟡 Пересекаются: " + ", ".join(overlapping_names))
+
+        if messages:
+            self.status_label.setText(" | ".join(messages))
         else:
             self.status_label.setText("")
 
@@ -500,6 +545,7 @@ class CanvasWindow(QMainWindow):
 
         if "length" in changes or "width" in changes or "text" in changes or "color" in changes:
             self.check_object_bounds(item)
+            self.check_object_collisions()
             self.update_status_bar()
 
         print("✅ edit_object: completed")
