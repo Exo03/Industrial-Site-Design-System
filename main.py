@@ -1,4 +1,4 @@
-from PySide6.QtCore import QPointF, QRectF, Qt, QLocale
+from PySide6.QtCore import QPointF, QRectF, Qt, QLocale, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPen, QPainter, QWheelEvent, QTransform, QDoubleValidator
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView,
@@ -203,18 +203,27 @@ class SnappableObject(QGraphicsObject):
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
 
+        self._is_outside_area = False
+
     def _px(self, meters):
         return meters * self._pixels_per_meter
 
     def boundingRect(self):
         return QRectF(0, 0, self._px(self._width_m), self._px(self._height_m))
 
+    def set_outside_area(self, is_outside: bool):
+        if self._is_outside_area != is_outside:
+            self._is_outside_area = is_outside
+            self.update()  # Перерисовать
+
     def paint(self, painter, option, widget=None):
         w_px = self._px(self._width_m)
         h_px = self._px(self._height_m)
 
         painter.setBrush(QBrush(self._color))
-        painter.setPen(QPen(QColor(0, 0, 0, 150)))
+        base_pen = QPen(QColor(0, 0, 0, 150))
+        base_pen.setWidth(1)
+        painter.setPen(base_pen)
         painter.drawRect(0, 0, w_px, h_px)
 
         font = painter.font()
@@ -224,20 +233,38 @@ class SnappableObject(QGraphicsObject):
         text_rect = QRectF(0, 0, w_px, h_px)
         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self._text)
 
+        # Рисуем выделение (если выбран)
         if self.isSelected():
             pen = QPen(Qt.white)
             pen.setWidth(1)
-            pen.setStyle(Qt.DashLine)  # Пунктир — стандарт для выделения
+            pen.setStyle(Qt.DashLine)
             painter.setPen(pen)
-            painter.setBrush(Qt.NoBrush)  # Не закрашиваем внутри
+            painter.setBrush(Qt.NoBrush)
             painter.drawRect(0, 0, w_px, h_px)
+
+        # Рисуем красную рамку, если вне площадки
+        if self._is_outside_area:
+            red_pen = QPen(QColor(255, 0, 0))
+            red_pen.setWidth(2)
+            red_pen.setStyle(Qt.SolidLine)
+            painter.setPen(red_pen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(0, 0, w_px, h_px)
+
+    geometryChanged = Signal()  # Новый сигнал
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionChange and self.scene():
             grid_px = self._px(self._grid_size_m)
             x = round(value.x() / grid_px) * grid_px
             y = round(value.y() / grid_px) * grid_px
-            return QPointF(x, y)
+            new_value = QPointF(x, y)
+            # После изменения позиции — уведомляем
+            result = super().itemChange(change, new_value)
+            self.geometryChanged.emit()
+            return result
+        elif change == QGraphicsItem.ItemTransformHasChanged:
+            self.geometryChanged.emit()
         return super().itemChange(change, value)
 
     def update_text(self, text):
@@ -342,6 +369,8 @@ class CanvasWindow(QMainWindow):
         self.ui.actionSetArea.triggered.connect(self.set_area)
 
         self.statusBar().showMessage("Масштаб: 1 м = 20 пикс. | Сетка: 0.5 м (1 клетка)")
+        self.status_label = QLabel("")
+        self.statusBar().addPermanentWidget(self.status_label)
 
     #Функция сгенерирована ИИ
     def set_area(self):
@@ -367,6 +396,26 @@ class CanvasWindow(QMainWindow):
         center_y = scene_rect.height() / 2 - (height_m * PIXELS_PER_METER) / 2
         area.setPos(center_x, center_y)
 
+    def get_workspace_area(self):
+          for item in self.scene.items():
+              if isinstance(item, WorkspaceArea):
+                 return item
+          return None
+
+    def check_object_bounds(self, obj: SnappableObject):
+        area = self.get_workspace_area()
+        if not area:
+            obj.set_outside_area(False)
+            return False
+
+        obj_rect = obj.mapToScene(obj.boundingRect()).boundingRect()
+        area_rect = area.mapToScene(area.boundingRect()).boundingRect()
+
+        is_outside = not area_rect.contains(obj_rect)
+
+        obj.set_outside_area(is_outside)
+        return is_outside
+
     #Метод сгенерирован ИИ
     def add_object(self):
         selected_type = self.ui.comboBox.currentText().strip() or "Объект"
@@ -378,8 +427,28 @@ class CanvasWindow(QMainWindow):
             grid_size_m=0.5,
             pixels_per_meter=PIXELS_PER_METER
         )
+        obj.geometryChanged.connect(lambda: self.on_object_moved(obj))
         self.scene.addItem(obj)
         obj.setPos(400, 400)
+        self.check_object_bounds(obj)
+        self.update_status_bar()
+
+    def on_object_moved(self, obj):
+        self.check_object_bounds(obj)
+        self.update_status_bar()
+
+    #Сгенерировано ИИ
+    def update_status_bar(self):
+        area = self.get_workspace_area()
+        outside_names = []
+        for item in self.scene.items():
+            if isinstance(item, SnappableObject) and item._is_outside_area:
+                outside_names.append(item._text)
+
+        if outside_names:
+            self.status_label.setText("⚠️ Вне площадки: " + ", ".join(outside_names))
+        else:
+            self.status_label.setText("")
 
     # Метод сгенерирован ИИ
     def edit_object(self):
@@ -428,6 +497,10 @@ class CanvasWindow(QMainWindow):
         if "length" in changes or "width" in changes:
             item.prepareGeometryChange()
             item.update()
+
+        if "length" in changes or "width" in changes or "text" in changes or "color" in changes:
+            self.check_object_bounds(item)
+            self.update_status_bar()
 
         print("✅ edit_object: completed")
 
