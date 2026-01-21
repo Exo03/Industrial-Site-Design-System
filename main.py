@@ -4,12 +4,15 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView,
     QGraphicsItem, QGraphicsObject, QDialog, QColorDialog,
     QVBoxLayout, QLabel, QStatusBar, QMenuBar, QMenu, QToolBar,
-    QWidget, QComboBox, QHBoxLayout
+    QWidget, QComboBox, QHBoxLayout, QMessageBox
 )
 
 from UI_Files.EditObjectWindow import Ui_Object_edit
 from UI_Files.MainWindow import Ui_MainWindow
 from UI_Files.SetArea import Ui_SetArea
+from UI_Files.AuthorizeWindow import Ui_AuthorizeWindow
+from UI_Files.RegisterWindow import Ui_RegisterWindow
+
 
 PIXELS_PER_METER = 20
 
@@ -346,6 +349,44 @@ class WorkspaceArea(QGraphicsObject):
         painter.setBrush(Qt.NoBrush)  # Без заливки
         painter.drawRect(0, 0, w_px, h_px)
 
+class RegisterDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.ui = Ui_RegisterWindow()
+        self.ui.setupUi(self)
+
+        # Подключаем сигналы
+        self.ui.pushButton.clicked.connect(self.accept)
+        self.ui.passwordLineEdit.returnPressed.connect(self.accept)
+        self.ui.ifExist.linkActivated.connect(self.open_auth_from_register)  # Ссылка "Уже есть аккаунт?"
+
+    def get_registration_data(self):
+        return self.ui.loginLineEdit.text(), self.ui.emailLineEdit.text(), self.ui.passwordLineEdit.text()
+
+    def open_auth_from_register(self):
+        self.close()
+        auth_dialog = AuthDialog(self.parent())
+        auth_dialog.exec()
+
+class AuthDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.ui = Ui_AuthorizeWindow()
+        self.ui.setupUi(self)
+
+        # Подключаем сигналы
+        self.ui.pushButton.clicked.connect(self.accept)
+        self.ui.passwordLineEdit.returnPressed.connect(self.accept)
+        self.ui.registerLink.linkActivated.connect(self.open_register)  # <-- Новая строка
+
+    def get_credentials(self):
+        return self.ui.loginLineEdit.text(), self.ui.passwordLineEdit.text()
+
+    def open_register(self):  # <-- Новый метод
+        self.close()
+        reg_dialog = RegisterDialog(self.parent())
+        reg_dialog.exec()
+
 class CanvasWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -382,10 +423,25 @@ class CanvasWindow(QMainWindow):
         self.ui.actionEditObject.triggered.connect(self.edit_object)
         self.ui.actionDeleteObject.triggered.connect(self.delete_object)
         self.ui.actionSetArea.triggered.connect(self.set_area)
+        self.ui.action_8.triggered.connect(self.open_auth_dialog)
 
         self.statusBar().showMessage("Масштаб: 1 м = 20 пикс. | Сетка: 0.5 м (1 клетка)")
         self.status_label = QLabel("")
         self.statusBar().addPermanentWidget(self.status_label)
+
+    def open_auth_dialog(self):
+        dialog = AuthDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            username, password = dialog.get_credentials()
+            if self.validate_login(username, password):
+                QMessageBox.information(self, "Успешно", "Авторизация успешна!")
+            else:
+                QMessageBox.warning(self, "Ошибка", "Неверный логин или пароль.")
+        # else: пользователь отменил
+
+    def validate_login(self, username, password):
+        # Пример: замените на реальную логику (API, база данных и т.д.)
+        return username == "admin" and password == "12345"
 
     #Функция сгенерирована ИИ
     def set_area(self):
