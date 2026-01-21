@@ -46,6 +46,6 @@ async def get_element_type(
 async def get_element_types(
     db: AsyncSession = Depends(get_db)
 ):
-    element_types= (await db.execute(select(ElementType))).scalars().all()
+    element_types = (await db.execute(select(ElementType))).scalars().all()
 
     return element_types
