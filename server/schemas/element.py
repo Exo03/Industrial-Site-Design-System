@@ -7,6 +7,8 @@ class ElementCreate(BaseModel):
     y: int
     width: int
     length: int
+    title: str
+    color: str
 
 class ElementResponse(BaseModel):
     id: int
@@ -15,6 +17,8 @@ class ElementResponse(BaseModel):
     y: int
     width: int
     length: int
+    title: str
+    color: str
 
     class Config:
         from_attributes = True
@@ -28,3 +32,12 @@ class ElementResize(BaseModel):
     id: int
     width: int
     length: int
+
+class ElementRename(BaseModel):
+    id: int
+    title: str
+
+class ElementRecolor(BaseModel):
+    id: int
+    color: str
+

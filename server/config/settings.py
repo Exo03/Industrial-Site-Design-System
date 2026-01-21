@@ -12,11 +12,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # БД
-    POSTGRES_USER: str = "user"
-    POSTGRES_PASSWORD: str = 'J73ZyKfifH8x1AB4kYuNWvrQ9K6OA5VZ'
-    POSTGRES_HOST: str = "dpg-d4iurf15pdvs7385ojl0-a.oregon-postgres.render.com"
+    POSTGRES_USER: str = "klim"
+    POSTGRES_PASSWORD: str = '6861'
+    POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "industrial_site_design_system"
+    POSTGRES_DB: str = "Industrial-Site-Design-System"
 
     @property
     def DATABASE_URL(self) -> str:

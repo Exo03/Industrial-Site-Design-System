@@ -3,12 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, exists
 from sqlalchemy.exc import IntegrityError
 from server.config.database import get_db
-from server.schemas.element import ElementCreate, ElementResponse, ElementMove, ElementResize
+from server.schemas.element import ElementCreate, ElementResponse, ElementMove, ElementResize, ElementRecolor, ElementRename
 from server.db.models.element import Element
 from server.db.models.project import Project
 from server.api.v1.dependencies import get_current_user
 from server.db.models.user import User
-from server.services import ElementService
 
 router = APIRouter()
 
@@ -32,18 +31,6 @@ async def add_element_to_project(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Project not found or access denied"
         )
-    
-    if await ElementService.check_element_overlap(db, element.x, element.y, element.width, element.length, element.project_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="New element overlaps with existing element"
-        )
-    
-    if not await ElementService.check_element_border(element.x, element.y, element.width, element.length, project.width, project.length):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="New position overlaps project border"
-        )
 
     new_element = Element(
         element_type_id=element.element_type_id,
@@ -52,6 +39,8 @@ async def add_element_to_project(
         width=element.width,
         length=element.length,
         project_id=element.project_id,
+        title = element.title,
+        color = element.color
     )
         
     db.add(new_element)
@@ -138,18 +127,6 @@ async def move_element(
     if not project:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    if await ElementService.check_element_overlap(db, new_element.x, new_element.y, element.width, element.length, element.project_id, element.id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="New position overlaps with existing element"
-        )
-
-    if not await ElementService.check_element_border(new_element.x, new_element.y, element.width, element.length, project.width, project.length):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="New position overlaps project border"
-        )
-
     element.x = new_element.x
     element.y = new_element.y
 
@@ -181,18 +158,6 @@ async def resize_element(
     if not project:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    if await ElementService.check_element_overlap(db, element.x, element.y, new_size.width, new_size.length, element.project_id, element.id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="New size overlaps with existing element"
-        )
-
-    if not await ElementService.check_element_border(element.x, element.y, new_size.width, new_size.length, project.width, project.length):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="New size overlaps project border"
-        )
-
     element.width = new_size.width
     element.length = new_size.length
 
@@ -223,5 +188,65 @@ async def get_element(
 
     if not project:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    return element
+
+@router.put("/recolor_element", response_model=ElementResponse)
+async def recolor_element(
+    new_color: ElementRecolor,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Element).where(Element.id == new_color.id))
+    element = result.scalar_one_or_none()
+
+    if not element:
+        raise HTTPException(status_code=404, detail="Элемент не найден")
+    
+    result = await db.execute(
+        select(Project).where(
+            Project.id == element.project_id,
+            Project.owner_id == current_user.id
+        )
+    )
+    project = result.scalar_one_or_none()
+
+    if not project:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    element.color = new_color.color
+
+    await db.commit()
+    await db.refresh(element)
+
+    return element
+
+@router.put("/rename_element", response_model=ElementResponse)
+async def recolor_element(
+    new_title: ElementRename,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Element).where(Element.id == new_title.id))
+    element = result.scalar_one_or_none()
+
+    if not element:
+        raise HTTPException(status_code=404, detail="Элемент не найден")
+    
+    result = await db.execute(
+        select(Project).where(
+            Project.id == element.project_id,
+            Project.owner_id == current_user.id
+        )
+    )
+    project = result.scalar_one_or_none()
+
+    if not project:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    element.color = new_title.title
+
+    await db.commit()
+    await db.refresh(element)
 
     return element
