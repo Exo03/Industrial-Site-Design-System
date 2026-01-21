@@ -12,11 +12,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # БД
-    POSTGRES_USER: str = "klim"
-    POSTGRES_PASSWORD: str = '6861'
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "Industrial-Site-Design-System"
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = 'DPwFoJyRoiopsUTaTtonokmRuYmkOULL'
+    POSTGRES_HOST: str = "mainline.proxy.rlwy.net"
+    POSTGRES_PORT: int = 42637
+    POSTGRES_DB: str = "railway"
 
     @property
     def DATABASE_URL(self) -> str:
