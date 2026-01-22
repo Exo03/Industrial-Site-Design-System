@@ -349,6 +349,7 @@ class WorkspaceArea(QGraphicsObject):
         painter.setBrush(Qt.NoBrush)  # Без заливки
         painter.drawRect(0, 0, w_px, h_px)
 
+
 class RegisterDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -356,12 +357,45 @@ class RegisterDialog(QDialog):
         self.ui.setupUi(self)
 
         # Подключаем сигналы
-        self.ui.pushButton.clicked.connect(self.accept)
-        self.ui.passwordLineEdit.returnPressed.connect(self.accept)
+        self.ui.pushButton.clicked.connect(self.handle_register)
+        self.ui.passwordLineEdit.returnPressed.connect(self.handle_register)
         self.ui.ifExist.linkActivated.connect(self.open_auth_from_register)  # Ссылка "Уже есть аккаунт?"
+
+    def handle_register(self):
+        login, email, password = self.get_registration_data()
+
+        # Проверяем, заполнены ли все поля
+        if not login or not email or not password:
+            QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все поля.")
+            return
+
+        # Проверяем корректность email (простая проверка)
+        if "@" not in email or "." not in email:
+            QMessageBox.warning(self, "Ошибка", "Введите корректный email адрес.")
+            return
+
+        # Проверяем длину пароля (например, минимум 5 символов)
+        if len(password) < 5:
+            QMessageBox.warning(self, "Ошибка", "Пароль должен содержать не менее 5 символов.")
+            return
+
+        # Здесь можно добавить вызов вашей функции регистрации (например, через API или БД)
+        if self.perform_registration(login, email, password):
+            QMessageBox.information(self, "Успешно", "Успешная регистрация!")
+            self.accept()  # Закрывает диалог с результатом Accepted
+        else:
+            QMessageBox.warning(self, "Ошибка", "Ошибка регистрации")
 
     def get_registration_data(self):
         return self.ui.loginLineEdit.text(), self.ui.emailLineEdit.text(), self.ui.passwordLineEdit.text()
+
+    def perform_registration(self, login, email, password):
+        # Здесь должна быть ваша логика регистрации
+        # Это может быть вызов API, запись в базу данных и т.д.
+        # Пока что просто возвращаем True для демонстрации
+        # В реальном приложении замените это на реальную логику
+        print(f"Регистрация: логин={login}, email={email}, пароль={password}")
+        return True  # или результат реальной проверки
 
     def open_auth_from_register(self):
         self.close()
