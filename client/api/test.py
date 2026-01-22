@@ -46,36 +46,24 @@ async def test_full_workflow():
     except Exception as e:
         print(f"⚠️ Не удалось загрузить профиль: {e}")
 
-    # === 3. КАТАЛОГ ОБОРУДОВАНИЯ ===
-    element_type_id = 1
+    # === 3. КАТАЛОГ ТИПОВ ОБОРУДОВАНИЯ ===
+    print("\n🔹 4. Загрузка каталога типов оборудования")
     try:
-        print("\n🔹 4. Загрузка списка типов оборудования")
         types = await get_element_types()
         print(f"✅ Найдено типов: {len(types)}")
-
-        if types:
-            element_type_id = types[0]["id"]
-
-            # 🔸 Безопасная попытка получить тип по ID
-            print(f"\n🔹 5. Попытка получить тип оборудования с ID={element_type_id}")
-            try:
-                type_detail = await get_element_type(element_type_id, token)
-                print(f"✅ Успешно: {type_detail.get('name', '—')}")
-            except Exception as e:
-                if "404" in str(e):
-                    print("⚠️ Эндпоинт /element_type/{id} пока не реализован (404) — пропускаем")
-                else:
-                    print(f"⚠️ Другая ошибка: {e}")
-        else:
-            print("⚠️ Каталог пуст")
-
+        if not types:
+            print("⚠️ Каталог пуст — тест невозможен")
+            return
+        element_type_id = types[0]["id"]
+        print(f"   → Используем тип: {types[0]['title']} (ID: {element_type_id})")
     except Exception as e:
-        print(f"❌ Ошибка при работе с каталогом: {e}")
+        print(f"❌ Ошибка загрузки каталога: {e}")
+        return
 
-    # === 4. ПРОЕКТЫ ===
+    # === 4. РАБОТА С ПРОЕКТАМИ ===
     project_id = None
     try:
-        print("\n🔹 6. Создание проекта")
+        print("\n🔹 5. Создание проекта")
         project = await create_project(
             name="Тестовый проект",
             description="Для полного теста",
@@ -86,15 +74,15 @@ async def test_full_workflow():
         project_id = project["id"]
         print(f"✅ Проект ID: {project_id}")
 
-        print("\n🔹 7. Список проектов")
+        print("\n🔹 6. Список проектов")
         projects = await get_user_projects(token)
         print(f"✅ Всего проектов: {len(projects)}")
 
-        print("\n🔹 8. Получение проекта по ID")
+        print("\n🔹 7. Получение проекта по ID")
         proj_detail = await get_project(project_id, token)
         print(f"✅ Проект: {proj_detail['name']}")
 
-        print("\n🔹 9. Переименование проекта")
+        print("\n🔹 8. Переименование проекта")
         renamed = await rename_project(
             project_id=project_id,
             name="Обновлённый проект",
@@ -114,16 +102,16 @@ async def test_full_workflow():
                 pass
         return
 
-    # === 5. ЭЛЕМЕНТЫ ===
+    # === 5. РАБОТА С ЭЛЕМЕНТАМИ ===
     element_id = None
     try:
-        print("\n🔹 10. Добавление элемента")
+        print("\n🔹 9. Добавление элемента")
         element = await add_elements(
             project_id=project_id,
             element_type_id=element_type_id,
             x=10,
             y=20,
-            width=5,
+            width=5,      # ← размеры задаются явно
             length=8,
             title="Тестовый агрегат",
             color="#4A90E2",
@@ -132,13 +120,20 @@ async def test_full_workflow():
         element_id = element["id"]
         print(f"✅ Элемент ID: {element_id}")
 
-        print("\n🔹 11. Список элементов проекта")
+        print("\n🔹 10. Список элементов проекта")
         elements = await get_project_elements(project_id, token)
         print(f"✅ Элементов в проекте: {len(elements)}")
 
-        print("\n🔹 12. Получение элемента по ID")
+        print("\n🔹 11. Получение элемента по ID")
         elem_detail = await get_elements(element_id, token)
         print(f"✅ Элемент: {elem_detail['title']} @ ({elem_detail['x']}, {elem_detail['y']})")
+
+        # 🔸 Получаем тип оборудования через элемент (без размеров!)
+        print("\n🔹 12. Получение типа оборудования через элемент")
+        type_info = await get_element_type(element_id, token)
+        print(f"✅ Тип: {type_info['title']}")
+        if type_info.get("description"):
+            print(f"   → Описание: {type_info['description']}")
 
         print("\n🔹 13. Перемещение элемента")
         moved = await move_element(id=element_id, x=30, y=40, token=token)
@@ -175,7 +170,7 @@ async def test_full_workflow():
     except Exception as e:
         print(f"⚠️ Ошибка при очистке: {e}")
 
-    print("\n🎉 Полный тест завершён!")
+    print("\n🎉 Полный цикл тестирования завершён успешно!")
 
 if __name__ == "__main__":
     asyncio.run(test_full_workflow())
