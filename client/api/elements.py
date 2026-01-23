@@ -76,3 +76,24 @@ async def get_elements(element_id:int, token:str) -> dict:
         response.raise_for_status()
         return response.json()
 
+async def recolor_element(id: int, color: str, token: str) -> dict:
+    async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=15.0) as client:
+        response = await client.put(
+            "/api/v1/recolor_element",
+            json={"id": id, "color": color},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        response.raise_for_status()
+        return response.json()
+
+
+async def rename_element(id: int, title: str, token: str) -> dict:
+    async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=15.0) as client:
+        response = await client.put(
+            "/api/v1/rename_element",
+            json={"id": id, "title": title},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        response.raise_for_status()
+        return response.json()
+

@@ -8,7 +8,7 @@ from client.api.projects import (
 )
 from client.api.elements import (
     add_elements, get_project_elements, get_elements,
-    move_element, resize_element, delete_element
+    move_element, resize_element, recolor_element, rename_element, delete_element
 )
 from client.api.users import get_current_user
 from client.api.element_types import get_element_types, get_element_type
@@ -46,7 +46,7 @@ async def test_full_workflow():
     except Exception as e:
         print(f"⚠️ Не удалось загрузить профиль: {e}")
 
-    # === 3. КАТАЛОГ ТИПОВ ОБОРУДОВАНИЯ ===
+    # === 3. КАТАЛОГ ТИПОВ ===
     print("\n🔹 4. Загрузка каталога типов оборудования")
     try:
         types = await get_element_types()
@@ -60,7 +60,7 @@ async def test_full_workflow():
         print(f"❌ Ошибка загрузки каталога: {e}")
         return
 
-    # === 4. РАБОТА С ПРОЕКТАМИ ===
+    # === 4. ПРОЕКТЫ ===
     project_id = None
     try:
         print("\n🔹 5. Создание проекта")
@@ -102,7 +102,7 @@ async def test_full_workflow():
                 pass
         return
 
-    # === 5. РАБОТА С ЭЛЕМЕНТАМИ ===
+    # === 5. ЭЛЕМЕНТЫ ===
     element_id = None
     try:
         print("\n🔹 9. Добавление элемента")
@@ -111,9 +111,9 @@ async def test_full_workflow():
             element_type_id=element_type_id,
             x=10,
             y=20,
-            width=5,      # ← размеры задаются явно
+            width=5,
             length=8,
-            title="Тестовый агрегат",
+            title="Насос",
             color="#4A90E2",
             token=token
         )
@@ -128,7 +128,7 @@ async def test_full_workflow():
         elem_detail = await get_elements(element_id, token)
         print(f"✅ Элемент: {elem_detail['title']} @ ({elem_detail['x']}, {elem_detail['y']})")
 
-        # 🔸 Получаем тип оборудования через элемент (без размеров!)
+        # 🔸 НОВОЕ: получение типа оборудования через элемент
         print("\n🔹 12. Получение типа оборудования через элемент")
         type_info = await get_element_type(element_id, token)
         print(f"✅ Тип: {type_info['title']}")
@@ -142,6 +142,14 @@ async def test_full_workflow():
         print("\n🔹 14. Изменение размера")
         resized = await resize_element(id=element_id, width=7, length=10, token=token)
         print(f"✅ Новый размер: {resized['width']} × {resized['length']}")
+
+        print("\n🔹 15. Смена цвета")
+        recolored = await recolor_element(id=element_id, color="#FF5733", token=token)
+        print(f"✅ Новый цвет: {recolored['color']}")
+
+        print("\n🔹 16. Переименование элемента")
+        renamed_elem = await rename_element(id=element_id, title="Компрессор", token=token)
+        print(f"✅ Новое название: {renamed_elem['title']}")
 
     except Exception as e:
         print(f"❌ Ошибка с элементами: {e}")
@@ -159,18 +167,18 @@ async def test_full_workflow():
 
     # === 6. ОЧИСТКА ===
     try:
-        print("\n🔹 15. Удаление элемента")
+        print("\n🔹 17. Удаление элемента")
         await delete_element(element_id, token)
         print("✅ Элемент удалён")
 
-        print("\n🔹 16. Удаление проекта")
+        print("\n🔹 18. Удаление проекта")
         await delete_project(project_id, token)
         print("✅ Проект удалён")
 
     except Exception as e:
         print(f"⚠️ Ошибка при очистке: {e}")
 
-    print("\n🎉 Полный цикл тестирования завершён успешно!")
+    print("\n🎉 Все функции протестированы успешно!")
 
 if __name__ == "__main__":
     asyncio.run(test_full_workflow())
