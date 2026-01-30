@@ -1,4 +1,5 @@
 # client/api/test_full.py
+#сделано с помощью нейросети
 import asyncio
 import uuid
 from client.api.auth import register, login
