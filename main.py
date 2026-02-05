@@ -1,4 +1,4 @@
-from PySide6.QtCore import QPointF, QRectF, Qt, QLocale, Signal
+from PySide6.QtCore import QPointF, QRectF, Qt, QLocale, Signal, QObject, QTimer
 from PySide6.QtGui import QBrush, QColor, QFont, QPen, QPainter, QWheelEvent, QTransform, QDoubleValidator
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView,
@@ -6,6 +6,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QLabel, QStatusBar, QMenuBar, QMenu, QToolBar,
     QWidget, QComboBox, QHBoxLayout, QMessageBox
 )
+from client.api.auth import login, register
+from client.api.users import get_current_user
 
 from UI_Files.EditObjectWindow import Ui_Object_edit
 from UI_Files.MainWindow import Ui_MainWindow
@@ -13,6 +15,86 @@ from UI_Files.SetArea import Ui_SetArea
 from UI_Files.AuthorizeWindow import Ui_AuthorizeWindow
 from UI_Files.RegisterWindow import Ui_RegisterWindow
 
+import asyncio
+from PySide6.QtCore import QRunnable, QThreadPool
+
+
+#Сгенерировано ИИ
+class SessionManager(QObject):
+    """Синглтон для хранения сессии пользователя"""
+    logged_in = Signal(str)
+    logged_out = Signal()
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+        super().__init__()
+        self._token = None
+        self._username = None
+        self._initialized = True
+
+    @property
+    def token(self):
+        return self._token
+
+    @property
+    def is_authenticated(self):
+        return self._token is not None
+
+    def login(self, token, username, user_id=None):
+        self._token = token
+        self._username = username
+        self.logged_in.emit(username)
+
+    def logout(self):
+        self._token = None
+        self._username = None
+        self.logged_out.emit()
+
+
+session = SessionManager()
+
+
+#Сгенерировано ИИ
+class WorkerSignals(QObject):
+    success = Signal(object)
+    error = Signal(Exception)
+    finished = Signal(object)
+
+#Сгенерировано ИИ
+class AsyncWorker(QRunnable):
+    """Выполняет async код в фоновом потоке"""
+
+    def __init__(self, coro):
+        super().__init__()
+        self.coro = coro
+        self.signals = WorkerSignals()
+        self.setAutoDelete(True)
+
+    def run(self):
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(self.coro)
+            self.signals.success.emit(result)
+            self.signals.finished.emit(result)
+        except Exception as e:
+            self.signals.error.emit(e)
+            self.signals.finished.emit(None)
+
+    @staticmethod
+    def run_async(coro):
+        worker = AsyncWorker(coro)
+        QThreadPool.globalInstance().start(worker)
+        return worker
 
 PIXELS_PER_METER = 20
 
@@ -349,77 +431,223 @@ class WorkspaceArea(QGraphicsObject):
         painter.setBrush(Qt.NoBrush)  # Без заливки
         painter.drawRect(0, 0, w_px, h_px)
 
-
+#Сгенерировано ИИ
 class RegisterDialog(QDialog):
+    """Диалог регистрации"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+
         self.ui = Ui_RegisterWindow()
         self.ui.setupUi(self)
 
-        # Подключаем сигналы
-        self.ui.pushButton.clicked.connect(self.handle_register)
-        self.ui.passwordLineEdit.returnPressed.connect(self.handle_register)
-        self.ui.ifExist.linkActivated.connect(self.open_auth_from_register)  # Ссылка "Уже есть аккаунт?"
+        self._connect_signals()
 
-    def handle_register(self):
-        login, email, password = self.get_registration_data()
+    def _connect_signals(self):
+        self.ui.pushButton.clicked.connect(self._handle_register)
+        self.ui.passwordLineEdit.returnPressed.connect(self._handle_register)
+        self.ui.ifExist.linkActivated.connect(self._back_to_login)
 
-        # Проверяем, заполнены ли все поля
-        if not login or not email or not password:
-            QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все поля.")
+    def _handle_register(self):
+        """Обработка регистрации"""
+        login_text = self.ui.loginLineEdit.text().strip()
+        email = self.ui.emailLineEdit.text().strip()
+        password = self.ui.passwordLineEdit.text()
+
+        if not self._validate(login_text, email, password):
             return
 
-        # Проверяем корректность email (простая проверка)
-        if "@" not in email or "." not in email:
-            QMessageBox.warning(self, "Ошибка", "Введите корректный email адрес.")
-            return
+        self._set_loading(True)
 
-        # Проверяем длину пароля (например, минимум 5 символов)
+        worker = AsyncWorker.run_async(register(email, login_text, password))
+        worker.signals.success.connect(self._on_success)
+        worker.signals.error.connect(self._on_error)
+
+    def _validate(self, login: str, email: str, password: str) -> bool:
+        """Валидация данных"""
+        if not all([login, email, password]):
+            QMessageBox.warning(self, "Ошибка", "Заполните все поля")
+            return False
+
+        if "@" not in email or "." not in email.split("@")[-1]:
+            QMessageBox.warning(self, "Ошибка", "Введите корректный email")
+            return False
+
         if len(password) < 5:
-            QMessageBox.warning(self, "Ошибка", "Пароль должен содержать не менее 5 символов.")
-            return
+            QMessageBox.warning(self, "Ошибка", "Пароль должен быть минимум 5 символов")
+            return False
 
-        # Здесь можно добавить вызов вашей функции регистрации (например, через API или БД)
-        if self.perform_registration(login, email, password):
-            QMessageBox.information(self, "Успешно", "Успешная регистрация!")
-            self.accept()  # Закрывает диалог с результатом Accepted
+        return True
+
+    def _on_success(self, data: dict):
+        """Успешная регистрация"""
+        QMessageBox.information(
+            self,
+            "Успешно",
+            "Регистрация завершена! Теперь вы можете войти."
+        )
+        self.accept()
+
+    def _on_error(self, error: Exception):
+        """Ошибка регистрации"""
+        self._set_loading(False)
+
+        error_str = str(error).lower()
+
+        if "already exists" in error_str or "409" in error_str:
+            QMessageBox.warning(
+                self,
+                "Ошибка",
+                "Пользователь с таким логином или email уже существует"
+            )
         else:
-            QMessageBox.warning(self, "Ошибка", "Ошибка регистрации")
+            QMessageBox.critical(self, "Ошибка", f"Ошибка регистрации: {error}")
 
-    def get_registration_data(self):
-        return self.ui.loginLineEdit.text(), self.ui.emailLineEdit.text(), self.ui.passwordLineEdit.text()
+    def _set_loading(self, loading: bool):
+        self.ui.pushButton.setEnabled(not loading)
+        self.ui.pushButton.setText("Регистрация..." if loading else "Зарегистрироваться")
 
-    def perform_registration(self, login, email, password):
-        # Здесь должна быть ваша логика регистрации
-        # Это может быть вызов API, запись в базу данных и т.д.
-        # Пока что просто возвращаем True для демонстрации
-        # В реальном приложении замените это на реальную логику
-        print(f"Регистрация: логин={login}, email={email}, пароль={password}")
-        return True  # или результат реальной проверки
+    def _back_to_login(self):
+        """Вернуться к авторизации"""
+        self.reject()
 
-    def open_auth_from_register(self):
-        self.close()
-        auth_dialog = AuthDialog(self.parent())
-        auth_dialog.exec()
-
+#Сгенерировано ИИ
 class AuthDialog(QDialog):
+    """Диалог авторизации с интеграцией API"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+
         self.ui = Ui_AuthorizeWindow()
         self.ui.setupUi(self)
 
-        # Подключаем сигналы
-        self.ui.pushButton.clicked.connect(self.accept)
-        self.ui.passwordLineEdit.returnPressed.connect(self.accept)
-        self.ui.registerLink.linkActivated.connect(self.open_register)  # <-- Новая строка
+        self._setup_ui()
+        self._connect_signals()
 
-    def get_credentials(self):
-        return self.ui.loginLineEdit.text(), self.ui.passwordLineEdit.text()
+    def _setup_ui(self):
+        """Настройка интерфейса"""
+        self.ui.pushButton.setText("Войти")
+        self.ui.pushButton.setDefault(True)
 
-    def open_register(self):  # <-- Новый метод
-        self.close()
+        # Проверка доступности сервера
+        self._check_server()
+
+    def _connect_signals(self):
+        """Подключение сигналов"""
+        self.ui.pushButton.clicked.connect(self._handle_login)
+        self.ui.passwordLineEdit.returnPressed.connect(self._handle_login)
+        self.ui.registerLink.linkActivated.connect(self._open_register)
+
+    def _check_server(self):
+        """Проверка доступности сервера"""
+        import httpx
+        from client.config.settings import API_BASE_URL
+
+        try:
+            response = httpx.get(f"{API_BASE_URL}/health", timeout=2.0)
+            if response.status_code == 200:
+                self.setWindowTitle("Авторизация")
+                return
+        except:
+            pass
+
+        self.setWindowTitle("Авторизация ⚠️ (сервер недоступен)")
+
+    def _handle_login(self):
+        """Обработка входа"""
+        username = self.ui.loginLineEdit.text().strip()
+        password = self.ui.passwordLineEdit.text()
+
+        if not self._validate_input(username, password):
+            return
+
+        self._set_loading(True)
+
+        # Запускаем асинхронную авторизацию
+        worker = AsyncWorker.run_async(self._do_login(username, password))
+        worker.signals.success.connect(self._on_login_success)
+        worker.signals.error.connect(self._on_login_error)
+
+    def _validate_input(self, username: str, password: str) -> bool:
+        """Валидация входных данных"""
+        if not username:
+            QMessageBox.warning(self, "Ошибка", "Введите логин")
+            return False
+        if not password:
+            QMessageBox.warning(self, "Ошибка", "Введите пароль")
+            return False
+        return True
+
+    async def _do_login(self, username: str, password: str):
+        """Асинхронная авторизация"""
+        # Получаем токен
+        token_data = await login(username, password)
+        token = token_data["access_token"]
+
+        # Получаем данные пользователя
+        user_data = await get_current_user(token)
+
+        return {
+            "token": token,
+            "username": user_data.get("username", username),
+            "user_id": user_data.get("id")
+        }
+
+    def _on_login_success(self, data: dict):
+        """Успешная авторизация"""
+        session.login(
+            token=data["token"],
+            username=data["username"],
+            user_id=data.get("user_id")
+        )
+        self.accept()
+
+    def _on_login_error(self, error: Exception):
+        """Ошибка авторизации"""
+        self._set_loading(False)
+
+        error_str = str(error).lower()
+
+        if "401" in error_str or "403" in error_str:
+            QMessageBox.warning(
+                self,
+                "Ошибка входа",
+                "Неверный логин или пароль"
+            )
+        elif "connection" in error_str:
+            QMessageBox.critical(
+                self,
+                "Ошибка подключения",
+                "Сервер недоступен. Проверьте подключение к интернету."
+            )
+        else:
+            QMessageBox.critical(
+                self,
+                "Ошибка",
+                f"Не удалось войти: {error}"
+            )
+
+    def _set_loading(self, loading: bool):
+        """Переключение состояния загрузки"""
+        self.ui.pushButton.setEnabled(not loading)
+        self.ui.pushButton.setText("Вход..." if loading else "Войти")
+        self.ui.loginLineEdit.setEnabled(not loading)
+        self.ui.passwordLineEdit.setEnabled(not loading)
+
+    def _open_register(self):
+        """Открытие окна регистрации"""
+        self.hide()
         reg_dialog = RegisterDialog(self.parent())
-        reg_dialog.exec()
+
+        if reg_dialog.exec() == QDialog.Accepted:
+            # Регистрация успешна, можно подставить данные
+            pass
+
+        self.show()
+        self.raise_()
+        self.activateWindow()
 
 class CanvasWindow(QMainWindow):
     def __init__(self):
@@ -463,19 +691,36 @@ class CanvasWindow(QMainWindow):
         self.status_label = QLabel("")
         self.statusBar().addPermanentWidget(self.status_label)
 
-    def open_auth_dialog(self):
-        dialog = AuthDialog(self)
-        if dialog.exec() == QDialog.Accepted:
-            username, password = dialog.get_credentials()
-            if self.validate_login(username, password):
-                QMessageBox.information(self, "Успешно", "Авторизация успешна!")
-            else:
-                QMessageBox.warning(self, "Ошибка", "Неверный логин или пароль.")
-        # else: пользователь отменил
+        session.logged_in.connect(self._on_logged_in)
+        session.logged_out.connect(self._on_logged_out)
 
-    def validate_login(self, username, password):
-        # Пример: замените на реальную логику (API, база данных и т.д.)
-        return username == "admin" and password == "12345"
+        QTimer.singleShot(0, self._check_auth)
+
+    # Сгенерировано ИИ
+    def _check_auth(self):
+        """Показываем окно входа при старте"""
+        if not session.is_authenticated:
+            dialog = AuthDialog(self)
+            if dialog.exec() != QDialog.Accepted:
+                self.close()  # Закрываем если не вошли
+
+    # Сгенерировано ИИ
+    def _on_logged_in(self, username):
+        """Когда вошли"""
+        self.statusBar().showMessage(f"Пользователь: {username}")
+        # Здесь можно загрузить проекты пользователя
+
+    # Сгенерировано ИИ
+    def _on_logged_out(self):
+        """Когда вышли"""
+        self.statusBar().showMessage("Не авторизован")
+        self.scene.clear()  # Очищаем сцену
+
+    # Сгенерировано ИИ
+    def open_auth_dialog(self):
+        """Ручной вход через меню"""
+        dialog = AuthDialog(self)
+        dialog.exec()
 
     #Функция сгенерирована ИИ
     def set_area(self):
@@ -485,6 +730,7 @@ class CanvasWindow(QMainWindow):
             if width and height:
                 self.set_workspace_area(width, height)
 
+    # Сгенерировано ИИ
     def set_workspace_area(self, width_m, height_m):
         # Удаляем старую площадку, если была
         for item in self.scene.items():
