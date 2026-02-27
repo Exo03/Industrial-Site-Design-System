@@ -12,7 +12,10 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    org_id = Column(Integer)
+    role = Column(String)
 
+    org = relationship("Org", back_populates = "members")
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
     project_memberships = relationship("ProjectMember", back_populates="user", cascade="all, delete-orphan")
 
