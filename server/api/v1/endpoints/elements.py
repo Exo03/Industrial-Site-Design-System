@@ -4,6 +4,7 @@ from sqlalchemy import select, exists
 from sqlalchemy.exc import IntegrityError
 from server.config.database import get_db
 from server.schemas.element import ElementCreate, ElementResponse, ElementMove, ElementResize, ElementRecolor, ElementRename
+from server.db.models.project_member import ProjectMember
 from server.db.models.element import Element
 from server.db.models.project import Project
 from server.api.v1.dependencies import get_current_user
@@ -18,19 +19,20 @@ async def add_element_to_project(
     db: AsyncSession = Depends(get_db)
 ):
 
-    project_result = await db.execute(
-        select(Project).where(
-            Project.id == element.project_id,
-            Project.owner_id == current_user.id
-        )
-    )
-    project = project_result.scalar_one_or_none()
+    result = await db.execute(select(Project).where(Project.id == element.project_id,))
+    project = result.scalar_one_or_none()
     
     if not project:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Project not found or access denied"
-        )
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    result = await db.excute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     new_element = Element(
         element_type_id=element.element_type_id,
@@ -55,19 +57,20 @@ async def get_project_elements(
     db: AsyncSession = Depends(get_db)
 ):
     
-    project_result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.owner_id == current_user.id
-        )
-    )
-    project = project_result.scalar_one_or_none()
+    result = await db.execute(select(Project).where(Project.id == project_id,))
+    project = result.scalar_one_or_none()
     
     if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found or access denied"
-        )
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    result = await db.excute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     elements_result = await db.execute(
         select(Element).where(Element.project_id == project_id)
@@ -89,15 +92,19 @@ async def delete_element(
     if not element:
         raise HTTPException(status_code=404, detail="Элемент не найден")
     
-    result = await db.execute(
-        select(Project).where(
-            Project.id == element.project_id,
-            Project.owner_id == current_user.id 
-        )
-    )
+    result = await db.execute(select(Project).where(Project.id == element.project_id,))
     project = result.scalar_one_or_none()
-
+    
     if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    result = await db.excute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.delete(element)  
@@ -116,15 +123,19 @@ async def move_element(
     if not element:
         raise HTTPException(status_code=404, detail="Элемент не найден")
     
-    result = await db.execute(
-        select(Project).where(
-            Project.id == element.project_id,
-            Project.owner_id == current_user.id
-        )
-    )
+    result = await db.execute(select(Project).where(Project.id == element.project_id,))
     project = result.scalar_one_or_none()
-
+    
     if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    result = await db.excute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     element.x = new_element.x
@@ -147,15 +158,19 @@ async def resize_element(
     if not element:
         raise HTTPException(status_code=404, detail="Элемент не найден")
     
-    result = await db.execute(
-        select(Project).where(
-            Project.id == element.project_id,
-            Project.owner_id == current_user.id
-        )
-    )
+    result = await db.execute(select(Project).where(Project.id == element.project_id,))
     project = result.scalar_one_or_none()
-
+    
     if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    result = await db.excute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     element.width = new_size.width
@@ -178,15 +193,19 @@ async def get_element(
     if not element:
         raise HTTPException(status_code=404, detail="Элемент не найден")
 
-    result = await db.execute(
-        select(Project).where(
-            Project.id == element.project_id,
-            Project.owner_id == current_user.id
-        )
-    )
+    result = await db.execute(select(Project).where(Project.id == element.project_id,))
     project = result.scalar_one_or_none()
-
+    
     if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    result = await db.excute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     return element
@@ -203,15 +222,19 @@ async def recolor_element(
     if not element:
         raise HTTPException(status_code=404, detail="Элемент не найден")
     
-    result = await db.execute(
-        select(Project).where(
-            Project.id == element.project_id,
-            Project.owner_id == current_user.id
-        )
-    )
+    result = await db.execute(select(Project).where(Project.id == element.project_id,))
     project = result.scalar_one_or_none()
-
+    
     if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    result = await db.excute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     element.color = new_color.color
@@ -222,7 +245,7 @@ async def recolor_element(
     return element
 
 @router.put("/rename_element", response_model=ElementResponse)
-async def rename_element(
+async def recolor_element(
     new_title: ElementRename,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -233,15 +256,19 @@ async def rename_element(
     if not element:
         raise HTTPException(status_code=404, detail="Элемент не найден")
     
-    result = await db.execute(
-        select(Project).where(
-            Project.id == element.project_id,
-            Project.owner_id == current_user.id
-        )
-    )
+    result = await db.execute(select(Project).where(Project.id == element.project_id,))
     project = result.scalar_one_or_none()
-
+    
     if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    result = await db.excute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     element.color = new_title.title
