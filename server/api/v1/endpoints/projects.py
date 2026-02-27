@@ -5,6 +5,7 @@ from server.config.database import get_db
 from server.schemas.project import ProjectCreate, ProjectResponse
 from server.db.models.user import User
 from server.db.models.project import Project
+from server.db.models.project_member import ProjectMember
 from server.api.v1.dependencies import get_current_user
 
 router = APIRouter()
@@ -104,3 +105,40 @@ async def get_project(
         raise HTTPException(status_code=404, detail="Project not found or access denied")
 
     return project
+
+@router.post("/add_member", status_code=status.HTTP_204_NO_CONTENT)
+async def add_member(
+    username: str,
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Project).where(
+        Project.id == project_id,
+        Project.owner_id == current_user.id
+    ))
+
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
+    
+    user = await User.get_user_by_username(db, username)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    existing = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == invited_user.id
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "User already in project")
+    
+    member = ProjectMember(user_id = user.id, project_id = project.id)
+    db.add(member)
+    await db.commit()
+
+    return
+    
