@@ -83,25 +83,28 @@ class Ui_RegisterWindow(object):
 "    padding: 4px 0px;\n"
 "    qproperty-alignment: AlignRight;\n"
 "}")
+        self.verticalLayout_6 = QVBoxLayout(RegisterWindow)
+        self.verticalLayout_6.setSpacing(27)
+        self.verticalLayout_6.setObjectName(u"verticalLayout_6")
         self.label = QLabel(RegisterWindow)
         self.label.setObjectName(u"label")
-        self.label.setGeometry(QRect(160, 20, 138, 36))
         self.label.setStyleSheet(u"font-size: 16pt;")
-        self.layoutWidget = QWidget(RegisterWindow)
-        self.layoutWidget.setObjectName(u"layoutWidget1")
-        self.layoutWidget.setGeometry(QRect(80, 60, 311, 226))
-        self.verticalLayout_4 = QVBoxLayout(self.layoutWidget)
-        self.verticalLayout_4.setSpacing(10)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
+
+        self.verticalLayout_6.addWidget(self.label)
+
+        self.verticalLayout_4 = QVBoxLayout()
+        self.verticalLayout_4.setSpacing(16)
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_3 = QVBoxLayout()
+        self.verticalLayout_3.setSpacing(0)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
-        self.loginLabel = QLabel(self.layoutWidget)
+        self.loginLabel = QLabel(RegisterWindow)
         self.loginLabel.setObjectName(u"loginLabel")
 
         self.verticalLayout_3.addWidget(self.loginLabel)
 
-        self.loginLineEdit = QLineEdit(self.layoutWidget)
+        self.loginLineEdit = QLineEdit(RegisterWindow)
         self.loginLineEdit.setObjectName(u"loginLineEdit")
 
         self.verticalLayout_3.addWidget(self.loginLineEdit)
@@ -110,13 +113,14 @@ class Ui_RegisterWindow(object):
         self.verticalLayout_4.addLayout(self.verticalLayout_3)
 
         self.verticalLayout_2 = QVBoxLayout()
+        self.verticalLayout_2.setSpacing(0)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.emailLabel = QLabel(self.layoutWidget)
+        self.emailLabel = QLabel(RegisterWindow)
         self.emailLabel.setObjectName(u"emailLabel")
 
         self.verticalLayout_2.addWidget(self.emailLabel)
 
-        self.emailLineEdit = QLineEdit(self.layoutWidget)
+        self.emailLineEdit = QLineEdit(RegisterWindow)
         self.emailLineEdit.setObjectName(u"emailLineEdit")
 
         self.verticalLayout_2.addWidget(self.emailLineEdit)
@@ -125,13 +129,14 @@ class Ui_RegisterWindow(object):
         self.verticalLayout_4.addLayout(self.verticalLayout_2)
 
         self.verticalLayout = QVBoxLayout()
+        self.verticalLayout.setSpacing(0)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.passwordLabel = QLabel(self.layoutWidget)
+        self.passwordLabel = QLabel(RegisterWindow)
         self.passwordLabel.setObjectName(u"passwordLabel")
 
         self.verticalLayout.addWidget(self.passwordLabel)
 
-        self.passwordLineEdit = QLineEdit(self.layoutWidget)
+        self.passwordLineEdit = QLineEdit(RegisterWindow)
         self.passwordLineEdit.setObjectName(u"passwordLineEdit")
 
         self.verticalLayout.addWidget(self.passwordLineEdit)
@@ -139,23 +144,26 @@ class Ui_RegisterWindow(object):
 
         self.verticalLayout_4.addLayout(self.verticalLayout)
 
-        self.layoutWidget1 = QWidget(RegisterWindow)
-        self.layoutWidget1.setObjectName(u"layoutWidget1")
-        self.layoutWidget1.setGeometry(QRect(150, 310, 183, 74))
-        self.verticalLayout_5 = QVBoxLayout(self.layoutWidget1)
+
+        self.verticalLayout_6.addLayout(self.verticalLayout_4)
+
+        self.verticalLayout_5 = QVBoxLayout()
+        self.verticalLayout_5.setSpacing(0)
         self.verticalLayout_5.setObjectName(u"verticalLayout_5")
-        self.verticalLayout_5.setContentsMargins(0, 0, 0, 0)
-        self.pushButton = QPushButton(self.layoutWidget1)
+        self.pushButton = QPushButton(RegisterWindow)
         self.pushButton.setObjectName(u"pushButton")
         self.pushButton.setStyleSheet(u"font-size: 11pt;\n"
 "")
 
         self.verticalLayout_5.addWidget(self.pushButton)
 
-        self.ifExist = QLabel(self.layoutWidget1)
+        self.ifExist = QLabel(RegisterWindow)
         self.ifExist.setObjectName(u"ifExist")
 
         self.verticalLayout_5.addWidget(self.ifExist)
+
+
+        self.verticalLayout_6.addLayout(self.verticalLayout_5)
 
 
         self.retranslateUi(RegisterWindow)
