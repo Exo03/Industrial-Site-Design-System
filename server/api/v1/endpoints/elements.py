@@ -222,7 +222,7 @@ async def recolor_element(
     return element
 
 @router.put("/rename_element", response_model=ElementResponse)
-async def rename_element(
+async def recolor_element(
     new_title: ElementRename,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)

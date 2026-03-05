@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RegisterWindow</class>
+ <widget class="QDialog" name="RegisterWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>486</width>
+    <height>406</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Register</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">/* Общий фон окна авторизации */
+QWidget {
+    background-color: #121212;
+    color: #FFFFFF;
+    font-family: &quot;Segoe UI&quot;, Arial, sans-serif;
+}
+
+/* Заголовок &quot;Авторизация&quot; */
+QLabel#titleLabel {
+    font-size: 20pt;
+    font-weight: bold;
+    color: #FFFFFF;
+    qproperty-alignment: AlignCenter;
+    margin-bottom: 20px;
+}
+
+/* Метки &quot;Логин&quot;, &quot;Пароль&quot; */
+QLabel {
+    color: #FFFFFF;
+    font-size: 11pt;
+    padding: 4px 0px;
+}
+
+/* Поля ввода */
+QLineEdit {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    border: 1px solid #333333;
+    padding: 6px 10px;
+    border-radius: 4px;
+    selection-background-color: #BB86FC;
+    selection-color: black;
+}
+
+/* Кнопка &quot;Войти&quot; */
+QPushButton {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    border: 1px solid #333333;
+    padding: 8px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: #333333;
+}
+
+QPushButton:pressed {
+    background-color: #BB86FC;
+    color: black;
+}
+QLabel#ifExist {
+    color: #BB86FC;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 0px;
+    qproperty-alignment: AlignRight;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_6">
+   <property name="spacing">
+    <number>27</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 16pt;</string>
+     </property>
+     <property name="text">
+      <string>&lt;b&gt;Регистрация&lt;/b&gt;</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignHCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_4">
+     <property name="spacing">
+      <number>16</number>
+     </property>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="loginLabel">
+         <property name="text">
+          <string>Логин</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="loginLineEdit"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="emailLabel">
+         <property name="text">
+          <string>Email</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="emailLineEdit"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="passwordLabel">
+         <property name="text">
+          <string>Пароль</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="passwordLineEdit"/>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_5">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="pushButton">
+       <property name="styleSheet">
+        <string notr="true">font-size: 11pt;
+</string>
+       </property>
+       <property name="text">
+        <string>Зарегистрироваться</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="ifExist">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;a href=&quot;#&quot;&gt;Уже есть аккаунт?&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

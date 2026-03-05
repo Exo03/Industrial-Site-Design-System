@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AuthorizeWindow</class>
+ <widget class="QDialog" name="AuthorizeWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>507</width>
+    <height>345</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Authorize</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">/* Общий фон окна авторизации */
+QWidget {
+    background-color: #121212;
+    color: #FFFFFF;
+    font-family: &quot;Segoe UI&quot;, Arial, sans-serif;
+}
+
+/* Заголовок &quot;Авторизация&quot; */
+QLabel#titleLabel {
+    font-size: 20pt;
+    font-weight: bold;
+    color: #FFFFFF;
+    qproperty-alignment: AlignCenter;
+    margin-bottom: 20px;
+}
+
+/* Метки &quot;Логин&quot;, &quot;Пароль&quot; */
+QLabel {
+    color: #FFFFFF;
+    font-size: 11pt;
+    padding: 4px 0px;
+}
+
+/* Поля ввода */
+QLineEdit {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    border: 1px solid #333333;
+    padding: 6px 10px;
+    border-radius: 4px;
+    selection-background-color: #BB86FC;
+    selection-color: black;
+}
+
+/* Кнопка &quot;Войти&quot; */
+QPushButton {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    border: 1px solid #333333;
+    padding: 8px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: #333333;
+}
+
+QPushButton:pressed {
+    background-color: #BB86FC;
+    color: black;
+}
+
+/* Гиперссылки: &quot;Забыли пароль?&quot;, &quot;Регистрация&quot; */
+QLabel#forgotPasswordLink,
+QLabel#registerLink {
+    color: #BB86FC;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 0px;
+    qproperty-alignment: AlignRight;
+}
+
+QLabel#registerLink {
+    qproperty-alignment: AlignCenter;
+    margin-top: 10px;
+}
+
+QLabel#forgotPasswordLink:hover,
+QLabel#registerLink:hover {
+    color: #FFFFFF;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>24</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="authLabel">
+     <property name="styleSheet">
+      <string notr="true">font-size: 20px;</string>
+     </property>
+     <property name="text">
+      <string>&lt;b&gt;Авторизация&lt;/b&gt;</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="paslogLayout">
+     <property name="spacing">
+      <number>18</number>
+     </property>
+     <item>
+      <layout class="QVBoxLayout" name="logLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="loginLabel">
+         <property name="layoutDirection">
+          <enum>Qt::LayoutDirection::LeftToRight</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+         <property name="text">
+          <string>Логин</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="loginLineEdit">
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QFormLayout" name="pasLayout">
+       <property name="horizontalSpacing">
+        <number>0</number>
+       </property>
+       <property name="verticalSpacing">
+        <number>0</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="passwordLabel">
+         <property name="text">
+          <string>Пароль</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QLineEdit" name="passwordLineEdit">
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="forgotPasswordLink">
+         <property name="text">
+          <string>Забыли пароль?</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignRight</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="enterLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="pushButton">
+       <property name="styleSheet">
+        <string notr="true">font-size: 11pt;</string>
+       </property>
+       <property name="text">
+        <string>Войти</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="registerLink">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;a href=&quot;#&quot;&gt;Регистрация&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
