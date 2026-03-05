@@ -23,7 +23,7 @@ class Ui_SetArea(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
-        Dialog.resize(200, 215)
+        Dialog.resize(227, 196)
         Dialog.setStyleSheet(u"QDialog {\n"
 "        background-color: #1E1E1E;\n"
 "        color: #FFFFFF;\n"
@@ -82,23 +82,22 @@ class Ui_SetArea(object):
 "    QPushButton#okButton:pressed {\n"
 "        background-color: #AA77DD;\n"
 "    }")
-        self.layoutWidget = QWidget(Dialog)
-        self.layoutWidget.setObjectName(u"layoutWidget")
-        self.layoutWidget.setGeometry(QRect(20, 20, 158, 173))
-        self.verticalLayout_3 = QVBoxLayout(self.layoutWidget)
-        self.verticalLayout_3.setSpacing(10)
+        self.verticalLayout_4 = QVBoxLayout(Dialog)
+        self.verticalLayout_4.setSpacing(14)
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
+        self.verticalLayout_3 = QVBoxLayout()
+        self.verticalLayout_3.setSpacing(12)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
-        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_2 = QVBoxLayout()
         self.verticalLayout_2.setSpacing(0)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.labelAreaH = QLabel(self.layoutWidget)
+        self.labelAreaH = QLabel(Dialog)
         self.labelAreaH.setObjectName(u"labelAreaH")
-        self.labelAreaH.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
+        self.labelAreaH.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
         self.verticalLayout_2.addWidget(self.labelAreaH)
 
-        self.heightLineEdit = QLineEdit(self.layoutWidget)
+        self.heightLineEdit = QLineEdit(Dialog)
         self.heightLineEdit.setObjectName(u"heightLineEdit")
 
         self.verticalLayout_2.addWidget(self.heightLineEdit)
@@ -107,14 +106,15 @@ class Ui_SetArea(object):
         self.verticalLayout_3.addLayout(self.verticalLayout_2)
 
         self.verticalLayout = QVBoxLayout()
-        self.verticalLayout.setSpacing(6)
+        self.verticalLayout.setSpacing(0)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.labelAreaW = QLabel(self.layoutWidget)
+        self.labelAreaW = QLabel(Dialog)
         self.labelAreaW.setObjectName(u"labelAreaW")
+        self.labelAreaW.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
         self.verticalLayout.addWidget(self.labelAreaW)
 
-        self.widthLineEdit = QLineEdit(self.layoutWidget)
+        self.widthLineEdit = QLineEdit(Dialog)
         self.widthLineEdit.setObjectName(u"widthLineEdit")
 
         self.verticalLayout.addWidget(self.widthLineEdit)
@@ -122,12 +122,15 @@ class Ui_SetArea(object):
 
         self.verticalLayout_3.addLayout(self.verticalLayout)
 
-        self.buttonBox = QDialogButtonBox(self.layoutWidget)
+        self.buttonBox = QDialogButtonBox(Dialog)
         self.buttonBox.setObjectName(u"buttonBox")
-        self.buttonBox.setOrientation(Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
+        self.buttonBox.setOrientation(Qt.Orientation.Horizontal)
+        self.buttonBox.setStandardButtons(QDialogButtonBox.StandardButton.Cancel|QDialogButtonBox.StandardButton.Ok)
 
-        self.verticalLayout_3.addWidget(self.buttonBox, 0, Qt.AlignHCenter)
+        self.verticalLayout_3.addWidget(self.buttonBox, 0, Qt.AlignmentFlag.AlignHCenter)
+
+
+        self.verticalLayout_4.addLayout(self.verticalLayout_3)
 
 
         self.retranslateUi(Dialog)

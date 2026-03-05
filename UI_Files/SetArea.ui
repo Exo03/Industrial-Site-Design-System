@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Object_edit</class>
- <widget class="QDialog" name="Object_edit">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>240</width>
-    <height>309</height>
+    <width>227</width>
+    <height>196</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -40,15 +40,6 @@
         border: 1px solid #BB86FC;
         outline: none;
     }
-
-    /* Поле для отображения цвета — с заливкой */
-    QLineEdit#colorDisplay {
-        background-color: #121212;  /* фон — как у главного окна */
-        border: 1px solid #333333;
-        border-radius: 4px;
-        padding: 6px 8px;
-    }
-
     QPushButton {
         background-color: #2A2A2A;
         color: #FFFFFF;
@@ -79,74 +70,58 @@
 
     QPushButton#okButton:pressed {
         background-color: #AA77DD;
-    }
-
-    QPushButton#colorButton {
-        background-color: #2A2A2A;
-        border: 1px solid #333333;
-        border-radius: 4px;
-        padding: 0;
-    }
-
-    QPushButton#colorButton:hover {
-        background-color: #333333;
     }</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_2">
+  <layout class="QVBoxLayout" name="verticalLayout_4">
+   <property name="spacing">
+    <number>14</number>
+   </property>
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <property name="spacing">
+      <number>12</number>
+     </property>
      <item>
-      <widget class="QLabel" name="TextLabel">
-       <property name="text">
-        <string>Текст:  </string>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <property name="spacing">
+        <number>0</number>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="textLineEdit"/>
-     </item>
-     <item>
-      <widget class="QLabel" name="LengthLabel">
-       <property name="text">
-        <string>Длина:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="lengthLineEdit"/>
-     </item>
-     <item>
-      <widget class="QLabel" name="WidthLabel">
-       <property name="text">
-        <string>Ширина:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="widthLineEdit"/>
-     </item>
-     <item>
-      <widget class="QLabel" name="ColorLabel">
-       <property name="text">
-        <string>Цвет:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
-        <widget class="QLineEdit" name="colorDisplay"/>
-       </item>
-       <item>
-        <widget class="QPushButton" name="colorChooseButton">
+        <widget class="QLabel" name="labelAreaH">
          <property name="text">
-          <string>Выбрать цвет</string>
+          <string>Высота площадки:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
          </property>
         </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="heightLineEdit"/>
        </item>
       </layout>
      </item>
      <item>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="labelAreaW">
+         <property name="text">
+          <string>Ширина площадки:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="widthLineEdit"/>
+       </item>
+      </layout>
+     </item>
+     <item alignment="Qt::AlignmentFlag::AlignHCenter">
       <widget class="QDialogButtonBox" name="buttonBox">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
@@ -165,7 +140,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>Object_edit</receiver>
+   <receiver>Dialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -181,7 +156,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>Object_edit</receiver>
+   <receiver>Dialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">

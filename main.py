@@ -1,12 +1,19 @@
-from PySide6.QtCore import QPointF, QRectF, Qt, QLocale, Signal, QObject, QTimer
-from PySide6.QtGui import QBrush, QColor, QFont, QPen, QPainter, QWheelEvent, QTransform, QDoubleValidator
+import json
+from datetime import datetime
+
+from PySide6.QtCore import QPointF, QRectF, Qt, QLocale, Signal, QObject, QTimer, QStandardPaths
+from PySide6.QtGui import QBrush, QColor, QFont, QPen, QPainter, QWheelEvent, QTransform, QDoubleValidator, QImage
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView,
     QGraphicsItem, QGraphicsObject, QDialog, QColorDialog,
     QVBoxLayout, QLabel, QStatusBar, QMenuBar, QMenu, QToolBar,
-    QWidget, QComboBox, QHBoxLayout, QMessageBox
+    QWidget, QComboBox, QHBoxLayout, QMessageBox, QFileDialog, QStyleOptionGraphicsItem, QStyle
 )
+
+from UI_Files.CreateProjectWindow import Ui_CreateProject
+from UI_Files.ProfileWindow import Ui_Profile
 from client.api.auth import login, register
+from client.api.projects import create_project, get_project
 from client.api.users import get_current_user
 
 from UI_Files.EditObjectWindow import Ui_Object_edit
@@ -14,6 +21,7 @@ from UI_Files.MainWindow import Ui_MainWindow
 from UI_Files.SetArea import Ui_SetArea
 from UI_Files.AuthorizeWindow import Ui_AuthorizeWindow
 from UI_Files.RegisterWindow import Ui_RegisterWindow
+from UI_Files.ProjectMenu import Ui_ProjectMenuWindow
 
 import asyncio
 from PySide6.QtCore import QRunnable, QThreadPool
@@ -38,7 +46,8 @@ class SessionManager(QObject):
             return
         super().__init__()
         self._token = None
-        self._username = None
+        self._username = "Test username"
+        self._email = "Test email"
         self._initialized = True
 
     @property
@@ -46,12 +55,22 @@ class SessionManager(QObject):
         return self._token
 
     @property
-    def is_authenticated(self):
-        return self._token is not None
+    def email(self):
+        return self._email
 
-    def login(self, token, username, user_id=None):
+    @property
+    def username(self):
+        return self._username
+
+    @property
+    def is_authenticated(self):
+        # return self._token is not None
+        return True
+
+    def login(self, token, username, email=None, user_id=None):
         self._token = token
         self._username = username
+        self._email = email
         self.logged_in.emit(username)
 
     def logout(self):
@@ -512,6 +531,16 @@ class RegisterDialog(QDialog):
         """Вернуться к авторизации"""
         self.reject()
 
+class ProfileDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.ui = Ui_Profile()
+        self.ui.setupUi(self)
+
+        self.ui.label_4.setText(session.username)
+        self.ui.label_5.setText(session.email)
+
+
 #Сгенерировано ИИ
 class AuthDialog(QDialog):
     """Диалог авторизации с интеграцией API"""
@@ -531,29 +560,11 @@ class AuthDialog(QDialog):
         self.ui.pushButton.setText("Войти")
         self.ui.pushButton.setDefault(True)
 
-        # Проверка доступности сервера
-        self._check_server()
-
     def _connect_signals(self):
         """Подключение сигналов"""
         self.ui.pushButton.clicked.connect(self._handle_login)
         self.ui.passwordLineEdit.returnPressed.connect(self._handle_login)
         self.ui.registerLink.linkActivated.connect(self._open_register)
-
-    def _check_server(self):
-        """Проверка доступности сервера"""
-        import httpx
-        from client.config.settings import API_BASE_URL
-
-        try:
-            response = httpx.get(f"{API_BASE_URL}/health", timeout=2.0)
-            if response.status_code == 200:
-                self.setWindowTitle("Авторизация")
-                return
-        except:
-            pass
-
-        self.setWindowTitle("Авторизация ⚠️ (сервер недоступен)")
 
     def _handle_login(self):
         """Обработка входа"""
@@ -649,6 +660,67 @@ class AuthDialog(QDialog):
         self.raise_()
         self.activateWindow()
 
+class CreateProjectDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.ui = Ui_CreateProject()
+        self.ui.setupUi(self)
+
+        self.created_project_name = None
+
+        self.ui.pushButton.clicked.connect(self.create_new_project)
+
+    def create_new_project(self):
+        name = self.ui.lineEdit.text()
+        description = self.ui.plainTextEdit.toPlainText()
+        token = session.token
+
+        AsyncWorker.run_async(
+            create_project(name, description, 0, 0, token)
+        )
+        self.accept()
+
+    def proj_name(self, result):
+        self.created_project_name = result.get("name")
+        self.accept()
+
+    def get_project_id(self):
+        return self.created_project_name
+
+
+#Сгенерировано ИИ
+class ProjectMenuDialog(QDialog):
+    """Меню выбора проекта после авторизации"""
+
+    project_created = Signal()  # Сигнал при создании нового проекта
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.ui = Ui_ProjectMenuWindow()
+        self.ui.setupUi(self)
+
+        self._connect_signals()
+
+    def _connect_signals(self):
+        self.ui.pushButton.clicked.connect(self._create_new_project)  # "Новый проект"
+        self.ui.pushButton_2.clicked.connect(self._open_project)  # "Открыть проект"
+
+    def _create_new_project(self):
+        dialog = CreateProjectDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            self.project_created.emit()
+            self.accept()
+
+    def _open_project(self):
+        """Открытие существующего проекта"""
+        # TODO: Добавить диалог выбора проекта
+        QMessageBox.information(self, "Информация", "Функция в разработке")
+        # Пока просто создаём новый
+        self.project_created.emit()
+        self.accept()
+
 class CanvasWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -686,6 +758,8 @@ class CanvasWindow(QMainWindow):
         self.ui.actionDeleteObject.triggered.connect(self.delete_object)
         self.ui.actionSetArea.triggered.connect(self.set_area)
         self.ui.action_8.triggered.connect(self.open_auth_dialog)
+        self.ui.actionSavePNG.triggered.connect(self.save_project_png)
+        self.ui.actionSaveJSON.triggered.connect(self.save_project_json)
 
         self.statusBar().showMessage("Масштаб: 1 м = 20 пикс. | Сетка: 0.5 м (1 клетка)")
         self.status_label = QLabel("")
@@ -694,16 +768,127 @@ class CanvasWindow(QMainWindow):
         session.logged_in.connect(self._on_logged_in)
         session.logged_out.connect(self._on_logged_out)
 
-        QTimer.singleShot(0, self._check_auth)
+    #Сгенерировано ИИ
+    def save_project_png(self):
+        """Сохранить в PNG — открывает проводник для выбора места"""
+
+        # Диалог сохранения файла
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self,  # родительское окно
+            u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0432 PNG",  # заголовок
+            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation) + "/project.png",  # путь по умолчанию
+            "PNG Images (*.png);;JPEG Images (*.jpg *.jpeg);;BMP Images (*.bmp);;All Files (*)"  # фильтры
+        )
+
+        # Пользователь нажал "Отмена"
+        if not file_path:
+            print("Сохранение отменено")
+            return
+
+        # Добавляем расширение если забыли
+        if not file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+            file_path += '.png'
+
+        # Сохраняем
+        self._do_save_png(file_path)
+
+    def _do_save_png(self, file_path: str):
+        try:
+            scene_rect = self.scene.itemsBoundingRect()
+            margin = 50
+            render_rect = scene_rect.adjusted(-margin, -margin, margin, margin)
+
+            width = int(render_rect.width())
+            height = int(render_rect.height())
+
+            image = QImage(width, height, QImage.Format_ARGB32)
+            image.fill(Qt.transparent)
+
+            painter = QPainter(image)
+            painter.setRenderHint(QPainter.Antialiasing)
+
+            # Сдвигаем систему координат
+            painter.translate(-render_rect.x(), -render_rect.y())
+
+            # 1. Рисуем фон (сетку)
+            self.scene.drawBackground(painter, render_rect)
+
+            # 2. Рисуем все items в правильном порядке (снизу вверх по z-value)
+            items = sorted(self.scene.items(), key=lambda item: item.zValue())
+
+            for item in items:
+                if not item.isVisible():
+                    continue
+
+                painter.save()
+
+                # Применяем transform item'а (позиция, поворот, масштаб)
+                painter.setTransform(item.sceneTransform(), True)
+
+                # Создаём опции для отрисовки
+                option = QStyleOptionGraphicsItem()
+                option.rect = item.boundingRect().toRect()
+                option.state = QStyle.State_None
+
+                # Рисуем item
+                item.paint(painter, option, None)
+
+                painter.restore()
+
+            painter.end()
+
+            if image.save(file_path):
+                self.statusBar().showMessage(f"✓ Сохранено: {file_path}", 5000)
+                QMessageBox.information(self, "Успех", f"Изображение сохранено:\n{file_path}")
+            else:
+                QMessageBox.critical(self, "Ошибка", "Не удалось сохранить изображение")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка сохранения:\n{e}")
 
     # Сгенерировано ИИ
-    def _check_auth(self):
-        """Показываем окно входа при старте"""
-        if not session.is_authenticated:
-            dialog = AuthDialog(self)
-            if dialog.exec() != QDialog.Accepted:
-                self.close()  # Закрываем если не вошли
+    def save_project_json(self):
+        """Сохранить в JSON — открывает проводник для выбора места"""
 
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0432 JSON",
+            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation) + "/project.json",
+            "JSON Files (*.json);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        if not file_path.lower().endswith('.json'):
+            file_path += '.json'
+
+        self._do_save_json(file_path)
+
+    def _do_save_json(self, file_path: str):
+
+        try:
+            project_data = {
+                "version": "1.0",
+                "created_at": datetime.now().isoformat(),
+                "project_name": "New Project",
+                "settings": {
+                    "pixels_per_meter": PIXELS_PER_METER,
+                    "grid_size": self.scene._grid_size
+                },
+                # "workspace": self._get_workspace_data(),
+                # "objects": self._get_objects_data()
+            }
+
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(project_data, f, ensure_ascii=False, indent=2)
+
+            self.current_project_path = file_path
+            self.statusBar().showMessage(f"✓ Сохранено: {file_path}", 5000)
+            QMessageBox.information(self, "Успех", f"Проект сохранён:\n{file_path}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить JSON:\n{e}")
     # Сгенерировано ИИ
     def _on_logged_in(self, username):
         """Когда вошли"""
@@ -718,9 +903,12 @@ class CanvasWindow(QMainWindow):
 
     # Сгенерировано ИИ
     def open_auth_dialog(self):
-        """Ручной вход через меню"""
-        dialog = AuthDialog(self)
-        dialog.exec()
+        if session.is_authenticated:
+            dialog = ProfileDialog(self)
+            dialog.exec()
+        else:
+            dialog = AuthDialog(self)
+            dialog.exec()
 
     #Функция сгенерирована ИИ
     def set_area(self):
@@ -890,9 +1078,30 @@ class CanvasWindow(QMainWindow):
         for item in self.scene.selectedItems():
             self.scene.removeItem(item)
 
-if __name__ == "__main__":
+
+def main():
     import sys
     app = QApplication(sys.argv)
-    window = CanvasWindow()
-    window.show()
+
+    if not session.is_authenticated:
+        auth_dialog = AuthDialog()
+        if auth_dialog.exec() != QDialog.Accepted:
+            sys.exit(0)
+
+    menu_dialog = ProjectMenuDialog()
+
+    canvas = CanvasWindow()
+
+    def on_project_created():
+        canvas.show()
+
+    menu_dialog.project_created.connect(on_project_created)
+
+    if menu_dialog.exec() != QDialog.Accepted:
+        sys.exit(0)
+
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
