@@ -24,16 +24,13 @@ class Ui_CreateProject(object):
         if not CreateProject.objectName():
             CreateProject.setObjectName(u"CreateProject")
         CreateProject.resize(500, 315)
-        CreateProject.setStyleSheet(u"background-color: #121212;")
         self.verticalLayout_2 = QVBoxLayout(CreateProject)
         self.verticalLayout_2.setSpacing(39)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.verticalLayout_2.setContentsMargins(15, 15, -1, 15)
         self.label = QLabel(CreateProject)
         self.label.setObjectName(u"label")
-        self.label.setStyleSheet(u"font-size: 18px;\n"
-"font-weight: bold;\n"
-"qproperty-alignment: AlignCenter;")
+
 
         self.verticalLayout_2.addWidget(self.label)
 
@@ -45,9 +42,7 @@ class Ui_CreateProject(object):
         self.proj_name.setObjectName(u"proj_name")
         self.label_2 = QLabel(CreateProject)
         self.label_2.setObjectName(u"label_2")
-        self.label_2.setStyleSheet(u"font-size: 12px;\n"
-"font-weight: normal;\n"
-"qproperty-alignment: AlignLeft;")
+
 
         self.proj_name.addWidget(self.label_2)
 
@@ -64,9 +59,7 @@ class Ui_CreateProject(object):
         self.discript.setObjectName(u"discript")
         self.label_3 = QLabel(CreateProject)
         self.label_3.setObjectName(u"label_3")
-        self.label_3.setStyleSheet(u"font-size: 12px;\n"
-"font-weight: normal;\n"
-"qproperty-alignment: AlignLeft;")
+
 
         self.discript.addWidget(self.label_3)
 
@@ -86,47 +79,11 @@ class Ui_CreateProject(object):
         self.buttons.setObjectName(u"buttons")
         self.pushButton = QPushButton(CreateProject)
         self.pushButton.setObjectName(u"pushButton")
-        self.pushButton.setStyleSheet(u"QPushButton {\n"
-"    background-color: #1E1E1E;\n"
-"    color: #FFFFFF;\n"
-"    border: 1px solid #333333;\n"
-"    border-radius: 4px;\n"
-"    font-weight: 500;\n"
-"	text-align: center;\n"
-"	height: 24px;\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    background-color: #333333;\n"
-"}\n"
-"\n"
-"QPushButton:pressed {\n"
-"    background-color: #BB86FC;\n"
-"    color: black;\n"
-"}")
 
         self.buttons.addWidget(self.pushButton)
 
         self.pushButton_2 = QPushButton(CreateProject)
         self.pushButton_2.setObjectName(u"pushButton_2")
-        self.pushButton_2.setStyleSheet(u"QPushButton {\n"
-"    background-color: #1E1E1E;\n"
-"    color: #FFFFFF;\n"
-"    border: 1px solid #333333;\n"
-"    border-radius: 4px;\n"
-"    font-weight: 500;\n"
-"	text-align: center;\n"
-"	height: 24px;\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    background-color: #333333;\n"
-"}\n"
-"\n"
-"QPushButton:pressed {\n"
-"    background-color: #BB86FC;\n"
-"    color: black;\n"
-"}")
 
         self.buttons.addWidget(self.pushButton_2)
 

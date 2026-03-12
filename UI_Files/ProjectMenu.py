@@ -23,40 +23,7 @@ class Ui_ProjectMenuWindow(object):
         if not ProjectMenuWindow.objectName():
             ProjectMenuWindow.setObjectName(u"ProjectMenuWindow")
         ProjectMenuWindow.resize(703, 499)
-        ProjectMenuWindow.setStyleSheet(u"QDialog{\n"
-"	background-color: #121212;\n"
-"}	\n"
-"\n"
-"\n"
-"QLabel {\n"
-"    font-size: 20pt;\n"
-"    font-weight: bold;\n"
-"    color: #FFFFFF;\n"
-"    qproperty-alignment: AlignCenter;\n"
-"    margin-bottom: 20px;\n"
-"}\n"
-"\n"
-"QPushButton {\n"
-"    background-color: #1E1E1E;\n"
-"    color: #FFFFFF;\n"
-"    border: 1px solid #333333;\n"
-"    padding: 8px 20px;\n"
-"    border-radius: 4px;\n"
-"    font-weight: 500;\n"
-"	text-align: center;\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    background-color: #333333;\n"
-"}\n"
-"\n"
-"QPushButton:pressed {\n"
-"    background-color: #BB86FC;\n"
-"    color: black;\n"
-"}\n"
-"QPushButton::icon {\n"
-"    position: left;           \n"
-"}")
+
         self.verticalLayout_2 = QVBoxLayout(ProjectMenuWindow)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.verticalLayout = QVBoxLayout()

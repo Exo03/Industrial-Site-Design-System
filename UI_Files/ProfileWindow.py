@@ -27,44 +27,13 @@ class Ui_Profile(object):
         font = QFont()
         font.setBold(True)
         Dialog.setFont(font)
-        Dialog.setStyleSheet(u"QDialog{\n"
-"	background-color: #121212;\n"
-"}	\n"
-"\n"
-"QLabel {\n"
-"    font-weight: bold;\n"
-"    color: #FFFFFF;\n"
-"}\n"
-"\n"
-"\n"
-"\n"
-"QPushButton {\n"
-"    background-color: #1E1E1E;\n"
-"    color: #FFFFFF;\n"
-"	height: 48px;\n"
-"    border: 1px solid #333333;\n"
-"    border-radius: 4px;\n"
-"	text-align: center;\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    background-color: #333333;\n"
-"}\n"
-"\n"
-"QPushButton:pressed {\n"
-"    background-color: #BB86FC;\n"
-"    color: black;\n"
-"}\n"
-"QPushButton::icon {\n"
-"    position: left;           \n"
-"}")
+
         self.verticalLayout = QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.frame = QFrame(Dialog)
         self.frame.setObjectName(u"frame")
         self.frame.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        self.frame.setStyleSheet(u"background-color: rgba(0, 0, 0, 0);\n"
-"border: rgba(0, 0, 0, 0);")
+
         self.frame.setFrameShape(QFrame.Shape.StyledPanel)
         self.frame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout = QHBoxLayout(self.frame)
@@ -97,7 +66,6 @@ class Ui_Profile(object):
 
         self.ProfIcon = QLabel(Dialog)
         self.ProfIcon.setObjectName(u"ProfIcon")
-        self.ProfIcon.setStyleSheet(u"qproperty-alignment: AlignCenter;")
         self.ProfIcon.setPixmap(QPixmap("Icons/account_circle_48dp_FFFFFF.svg"))
         self.ProfIcon.setScaledContents(False)
 
@@ -105,9 +73,7 @@ class Ui_Profile(object):
 
         self.label_4 = QLabel(Dialog)
         self.label_4.setObjectName(u"label_4")
-        self.label_4.setStyleSheet(u"background-color: rgba(255, 255, 255, 40);\n"
-"border-radius: 12px;\n"
-"border: 1px solid rgba(255, 255, 255, 100);")
+
         self.label_4.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
         self.label_4.setMargin(10)
 
@@ -115,9 +81,6 @@ class Ui_Profile(object):
 
         self.label_5 = QLabel(Dialog)
         self.label_5.setObjectName(u"label_5")
-        self.label_5.setStyleSheet(u"background-color: rgba(255, 255, 255, 40);\n"
-"border-radius: 12px;\n"
-"border: 1px solid rgba(255, 255, 255, 100);")
         self.label_5.setScaledContents(False)
         self.label_5.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
         self.label_5.setMargin(10)

@@ -25,104 +25,7 @@ class Ui_MainWindow(object):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(800, 600)
-        MainWindow.setStyleSheet(u"QMainWindow {\n"
-"                background-color: #121212;\n"
-"            }\n"
-"QMenuBar {\n"
-"background-color: #1E1E1E;\n"
-"color: #FFFFFF;\n"
-"border-bottom: 1px solid #333333;\n"
-"padding: 2px;\n"
-"}\n"
-"QMenuBar::item {\n"
-" background: transparent;\n"
-"padding: 6px 12px;\n"
-"border-radius: 4px;\n"
-" }\n"
-" QMenuBar::item:selected {\n"
-"background: #333333;\n"
-"}\n"
-"QMenuBar::item:pressed {\n"
-" background: #BB86FC;\n"
-"color: black;\n"
-"}\n"
-"\n"
-"QMenu {\n"
-"background-color: #1E1E1E;\n"
-" color: #FFFFFF;\n"
-" border: 1px solid #333333;\n"
-"padding: 4px 0px;\n"
-"}\n"
-"            QMenu::item {\n"
-"                padding: 6px 24px;\n"
-"            }\n"
-"            QMenu::item:selected {\n"
-"                background-color: #BB86FC;\n"
-"                color: black;\n"
-"            }\n"
-"            QMenu::separator {\n"
-"                height: 1px;\n"
-"                background: #333333;\n"
-"                margin: 4px 0px;\n"
-"            }\n"
-"\n"
-"    QToolBar {\n"
-"    background-color: #1E1"
-                        "E1E;\n"
-"    border: none;\n"
-"    border-bottom: 1px solid #333333;\n"
-"    padding: 4px;\n"
-"}\n"
-"\n"
-"            QToolButton {\n"
-"                background: transparent;\n"
-"                color: #FFFFFF;\n"
-"                border: 1px solid #333333;\n"
-"                padding: 6px 12px;\n"
-"                border-radius: 4px;\n"
-"                font-weight: 500;\n"
-"            }\n"
-"            QToolButton:hover {\n"
-"                background: #333333;\n"
-"            }\n"
-"            QToolButton:pressed {\n"
-"                background: #BB86FC;\n"
-"                color: black;\n"
-"            }\n"
-"\n"
-"            QComboBox {\n"
-"                background-color: #1E1E1E;\n"
-"                color: #FFFFFF;\n"
-"                border: 1px solid #333333;\n"
-"                padding: 3px 6px;\n"
-"                min-width: 120px;\n"
-"            }\n"
-"            QComboBox::drop-down {\n"
-"                border-left: 1px solid #333333;\n"
-"            }\n"
-"            QComboBox::down-arrow "
-                        "{\n"
-"                image: url(:/icons/arrow_drop_down.svg);\n"
-"                width: 12px;\n"
-"                height: 12px;\n"
-"                color: #FFFFFF;\n"
-"            }\n"
-"            QComboBox QAbstractItemView {\n"
-"                background-color: #1E1E1E;\n"
-"                color: #FFFFFF;\n"
-"                selection-background-color: #BB86FC;\n"
-"                selection-color: black;\n"
-"                border: 1px solid #333333;\n"
-"            }\n"
-"\n"
-"    QGraphicsView {\n"
-"    background-color: #1A1A1A; \n"
-"    border: 1px solid #333333;\n"
-"}\n"
-"\n"
-"            QToolButton + QToolButton {\n"
-"                border-left: none;\n"
-"            }")
+
         self.action = QAction(MainWindow)
         self.action.setObjectName(u"action")
         self.action_2 = QAction(MainWindow)
@@ -227,15 +130,6 @@ class Ui_MainWindow(object):
 
         self.labelEquipment = QLabel("Оборудование:", self.equipmentContainer)
         self.labelEquipment.setObjectName(u"labelEquipment")
-        self.labelEquipment.setStyleSheet("""
-            QLabel {
-                color: #FFFFFF;
-                font-weight: 500;
-                padding: 6px 8px; /* Отступы как у кнопок */
-                background-color: transparent; /* Прозрачный фон */
-                border: none;
-            }
-        """)
 
         self.comboBox = QComboBox(self.equipmentContainer)
         self.comboBox.setObjectName(u"equipmentComboBox")
@@ -290,33 +184,6 @@ class Ui_MainWindow(object):
     "Газоанализатор",
     "Установка автоматического пожаротушения"])
 
-        self.comboBox.setStyleSheet("""
-            QComboBox {
-                background-color: #1E1E1E;
-                color: #FFFFFF;
-                border: 1px solid #333333;
-                padding: 3px 6px;
-                min-width: 120px;
-                border-radius: 4px;
-                font-weight: 500;
-            }
-            QComboBox::drop-down {
-                border-left: 1px solid #333333;
-            }
-            QComboBox::down-arrow {
-                image: url(:/icons/arrow_drop_down.svg);
-                width: 12px;
-                height: 12px;
-                color: #FFFFFF;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #1E1E1E;
-                color: #FFFFFF;
-                selection-background-color: #BB86FC;
-                selection-color: black;
-                border: 1px solid #333333;
-            }
-        """)
 
         self.equipmentContainer.setFixedHeight(32)
 

@@ -13,10 +13,10 @@ class Settings(BaseSettings):
 
     # БД
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = 'DPwFoJyRoiopsUTaTtonokmRuYmkOULL'
-    POSTGRES_HOST: str = "mainline.proxy.rlwy.net"
-    POSTGRES_PORT: int = 42637
-    POSTGRES_DB: str = "railway"
+    POSTGRES_PASSWORD: str = '2aprl2009'
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_DB: str = "ischeme"
 
     @property
     def DATABASE_URL(self) -> str:
