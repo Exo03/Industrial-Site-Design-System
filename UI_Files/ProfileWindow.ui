@@ -211,7 +211,7 @@ border: 1px solid rgba(255, 255, 255, 100);</string>
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../Icons/profile_delete_24dp_FFFFFF.svg</normaloff>../Icons/profile_delete_24dp_FFFFFF.svg</iconset>
+         <normaloff>../Icons/delete_24dp_FFFFFF.svg</normaloff>../Icons/delete_24dp_FFFFFF.svg</iconset>
        </property>
       </widget>
      </item>
