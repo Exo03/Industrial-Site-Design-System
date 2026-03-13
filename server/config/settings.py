@@ -13,10 +13,10 @@ class Settings(BaseSettings):
 
     # БД
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = 'Gleb2002'
+    POSTGRES_PASSWORD: str = '2aprl2009'
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "glebi"
+    POSTGRES_DB: str = "ischeme"
 
     @property
     def DATABASE_URL(self) -> str:
