@@ -121,7 +121,7 @@ async def export_json(
         }
     )
 
-@router.get("/project/{project_id}/export/pdf", response_class=Response)
+''''@router.get("/project/{project_id}/export/pdf", response_class=Response)
 async def export_pdf(
     project_id: int,
     current_user: User = Depends(get_current_user),
@@ -177,4 +177,4 @@ async def export_pdf(
         headers={
             "Content-Disposition": f'attachment; filename="project_{project_id}.pdf"'
         }
-    )
+    )'''''

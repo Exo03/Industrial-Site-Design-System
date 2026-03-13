@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from server.api.v1.endpoints import users, elements, projects, auth, element_types, export
+from server.api.v1.endpoints import users, elements, projects, auth, element_types
 from server.db.session import engine
 from server.db.base import Base
 from server.api.middleware import RequestLoggingMiddleware
@@ -23,6 +23,5 @@ app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(elements.router, prefix="/api/v1", tags=["elements"])
 app.include_router(projects.router, prefix="/api/v1", tags=["projects"])
 app.include_router(element_types.router, prefix="/api/v1", tags=["element_types"])
-app.include_router(export.router, prefix="/api/v1")
 
 #app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
