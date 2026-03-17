@@ -13,5 +13,5 @@ class Project(Base):
         width = Column(Integer)
 
         elements = relationship("Element", back_populates="project", cascade="all, delete-orphan")
-
         user = relationship("User", back_populates="projects")
+        members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")

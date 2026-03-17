@@ -36,8 +36,8 @@ class SessionManager(QObject):
 
     @property
     def is_authenticated(self):
-        # return self._token is not None
-        return True
+        return self._token is not None
+
 
     def login(self, token, username, email=None, user_id=None):
         self._token = token

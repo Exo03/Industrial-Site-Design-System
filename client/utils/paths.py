@@ -1,0 +1,13 @@
+import sys
+import os
+
+
+def get_resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        base_path = os.path.join(base_path, '..', '..')
+        base_path = os.path.normpath(base_path)
+
+    return os.path.join(base_path, relative_path)
