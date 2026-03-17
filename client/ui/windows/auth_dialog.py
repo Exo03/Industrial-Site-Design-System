@@ -9,7 +9,6 @@ from ...core.async_worker import AsyncWorker
 
 
 class AuthDialog(ThemedDialog):
-    """Диалог авторизации с интеграцией API"""
 
     def __init__(self, parent=None):
         super().__init__(parent)

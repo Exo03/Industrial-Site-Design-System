@@ -9,7 +9,6 @@ from client.ui.windows import AuthDialog, ProjectMenuDialog, CanvasWindow
 
 
 def main():
-    # Высокий DPI
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
@@ -18,7 +17,6 @@ def main():
     app.setApplicationName("Industrial Designer")
     app.setFont(QFont("Segoe UI", 10))
 
-    # Применяем тему
     theme_manager.initialize(app, 'dark')
 
     # Авторизация
@@ -29,19 +27,17 @@ def main():
 
     # Меню проектов
     menu_dialog = ProjectMenuDialog()
-
     result = menu_dialog.exec()
 
-    # ← ИСПРАВЛЕНО: Проверяем результат
     if result == ProjectMenuDialog.Rejected:
-        # Пользователь нажал "Отмена" или закрыл окно
         sys.exit(0)
 
-    # ← ИСПРАВЛЕНО: Если Accepted — показываем Canvas
-    canvas = CanvasWindow()
+    # Данные выбранного проекта
+    selected_project = getattr(menu_dialog, '_selected_project_data', None)
+
+    canvas = CanvasWindow(project_data=selected_project)
     canvas.show()
 
-    # Запускаем главный цикл
     sys.exit(app.exec())
 
 

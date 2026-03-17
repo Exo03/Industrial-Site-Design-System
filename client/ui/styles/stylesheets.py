@@ -90,7 +90,7 @@ class StylesheetGenerator:
             border: 1px solid {self.p.border};
             padding: 8px 12px;
             border-radius: 4px;
-            min-height: 20px;
+            min-height: 16px;
         }}
 
         QLineEdit:focus {{
