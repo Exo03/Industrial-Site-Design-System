@@ -30,20 +30,9 @@ from ...api.elements import rename_element
 import sys
 import os
 
+from ...utils.paths import get_resource_path
+
 MOVE_DEBOUNCE_MS = 500
-
-def get_resource_path(relative_path):
-    # PyInstaller создаёт временную папку _MEIPASS
-    if hasattr(sys, '_MEIPASS'):
-        # Запущено из собранного exe
-        base_path = sys._MEIPASS
-    else:
-        # Запущено из исходников
-        base_path = os.path.dirname(os.path.abspath(__file__))
-
-    return os.path.join(base_path, relative_path)
-
-
 
 class CanvasWindow(QMainWindow):
     def __init__(self, project_data=None):
@@ -198,7 +187,8 @@ class CanvasWindow(QMainWindow):
 
         # Используем get_resource_path вместо прямых путей
         self.ui.actionAddObject.setIcon(
-            QIcon(get_resource_path(f"Icons/add_24dp_{suffix}.svg"))
+            QIcon(
+                get_resource_path(f"Icons/add_24dp_{suffix}.svg"))
         )
         self.ui.actionEditObject.setIcon(
             QIcon(get_resource_path(f"Icons/edit_24dp_{suffix}.svg"))

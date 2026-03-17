@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from client.core.theme_manager import theme_manager
 from client.session_manager import session
 from client.ui.windows import AuthDialog, ProjectMenuDialog, CanvasWindow
-from client.ui.windows.canvas_window import get_resource_path
+from client.utils.paths import get_resource_path
 
 
 # ваша функция для путей

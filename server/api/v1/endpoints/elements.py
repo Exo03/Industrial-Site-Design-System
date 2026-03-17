@@ -271,7 +271,7 @@ async def rename_element(
     if not member and project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    element.color = new_title.title
+    element.title = new_title.title
 
     await db.commit()
     await db.refresh(element)
