@@ -6,7 +6,7 @@ class GridScene(QGraphicsScene):
     def __init__(self, grid_size=10, parent=None):
         super().__init__(parent)
         self._grid_size = grid_size
-        self.setSceneRect(0, 0, 1000, 1000)
+        self.setSceneRect(0, 0, 10000, 10000)
 
     def drawBackground(self, painter, rect):
         super().drawBackground(painter, rect)
