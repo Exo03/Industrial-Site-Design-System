@@ -101,7 +101,7 @@ async def get_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))
