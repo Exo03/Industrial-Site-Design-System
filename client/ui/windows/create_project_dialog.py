@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import (QMessageBox)
 
 from ...ui.widgets.themed_dialog import ThemedDialog
 from UI_Files.CreateProjectWindow import Ui_CreateProject
