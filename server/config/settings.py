@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str = "supersecret"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
 
     # БД
     POSTGRES_USER: str = "postgres"
