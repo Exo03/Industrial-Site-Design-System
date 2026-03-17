@@ -8,9 +8,12 @@ from client.session_manager import session
 from client.ui.windows import AuthDialog, ProjectMenuDialog, CanvasWindow
 from client.utils.paths import get_resource_path
 
+import faulthandler
+faulthandler.enable()
 
-# ваша функция для путей
-
+# Для Windows: более информативный traceback
+import sys
+sys.excepthook = lambda *args: (faulthandler.dump_traceback(), sys.__excepthook__(*args))[1]
 
 def main():
     if sys.platform == 'win32':
