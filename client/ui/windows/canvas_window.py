@@ -85,6 +85,8 @@ class CanvasWindow(QMainWindow):
         self.status_label = QLabel("")
         self.statusBar().addPermanentWidget(self.status_label)
 
+        self.update_icons_for_theme(theme_manager.current_theme)
+
         if project_data:
             self._load_project(project_data)
 
