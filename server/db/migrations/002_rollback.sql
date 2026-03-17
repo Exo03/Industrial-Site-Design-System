@@ -1,5 +1,5 @@
 start transaction ;
 
-delete table project_members ;
+drop table project_members ;
 
 end transaction ;
