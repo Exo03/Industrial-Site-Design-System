@@ -136,7 +136,7 @@ async def add_member(
     existing = await db.execute(
         select(ProjectMember).where(
             ProjectMember.project_id == project_id,
-            ProjectMember.user_id == invited_user.id
+            ProjectMember.user_id == user.id
         )
     )
     if existing.scalar_one_or_none():
