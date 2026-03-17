@@ -518,12 +518,10 @@ class CanvasWindow(QMainWindow):
         if not selected:
             return
 
-        # Берем первый выделенный объект для получения начальных значений
         first_item = selected[0]
         if not isinstance(first_item, SnappableObject):
             return
 
-        # Открываем диалог с параметрами первого объекта
         dlg = EditObjectWindow(
             self,
             initial_text=first_item._text,
@@ -539,22 +537,23 @@ class CanvasWindow(QMainWindow):
         if not changes:
             return
 
-        # Применяем изменения ко ВСЕМ выделенным объектам и сохраняем на сервере
+        # ⭐ Собираем все изменения в очередь, но НЕ запускаем сразу
+        save_queue = []  # [(save_func, args), ...]
+
         modified_count = 0
         for item in selected:
             if not isinstance(item, SnappableObject):
                 continue
 
             element_id = getattr(item, '_element_id', None)
-            if not element_id:
+            if not element_id or element_id not in self._elements_map:
                 continue
 
             # Применяем изменения локально
             if "text" in changes:
                 item.update_text(changes["text"])
                 item._is_modified = True
-                # Сохраняем на сервере
-                self._save_text_to_server(element_id, changes["text"])
+                save_queue.append(('rename', element_id, changes["text"]))
 
             if "length" in changes:
                 item._width_m = changes["length"]
@@ -564,33 +563,86 @@ class CanvasWindow(QMainWindow):
                 item._height_m = changes["width"]
                 item._is_modified = True
 
-            # Сохраняем размеры, если изменились
             if "length" in changes or "width" in changes:
                 item.prepareGeometryChange()
                 item.update()
-                self._save_size_to_server(
-                    element_id,
-                    int(item._width_m),
-                    int(item._height_m)
-                )
+                save_queue.append(('resize', element_id, int(item._width_m), int(item._height_m)))
 
             if "color" in changes:
                 item.update_color(changes["color"])
                 item._is_modified = True
-                # Сохраняем на сервере
-                self._save_color_to_server(element_id, changes["color"])
+                save_queue.append(('recolor', element_id, changes["color"]))
 
             self.check_object_bounds(item)
             modified_count += 1
 
-        # Проверяем коллизии для всех объектов после изменения всех размеров
         self.check_object_collisions()
         self.update_status_bar()
 
+        # ⭐ Запускаем сохранения последовательно через очередь
+        if save_queue:
+            self._pending_save_queue = save_queue
+            self._process_save_queue()
+
         self.statusBar().showMessage(
-            f"Изменения применены и сохранены для {modified_count} объектов.",
-            3000
+            f"Изменения применены к {modified_count} объектов. Сохранение...", 3000
         )
+
+    def _process_save_queue(self):
+        """Обрабатывает очередь сохранений последовательно"""
+        if not hasattr(self, '_pending_save_queue') or not self._pending_save_queue:
+            self.statusBar().showMessage("Все изменения сохранены", 3000)
+            return
+
+        # Берём первое задание
+        save_task = self._pending_save_queue.pop(0)
+        save_type, element_id, *args = save_task
+
+        print(f"DEBUG: Processing {save_type} for element {element_id}")
+
+        # Создаём worker
+        if save_type == 'rename':
+            text = args[0]
+            worker = AsyncWorker.run_async(
+                rename_element(element_id, text, session.token)
+            )
+        elif save_type == 'recolor':
+            color = args[0]
+            worker = AsyncWorker.run_async(
+                recolor_element(element_id, color, session.token)
+            )
+        elif save_type == 'resize':
+            width, length = args
+            worker = AsyncWorker.run_async(
+                resize_element(element_id, width, length, session.token)
+            )
+        else:
+            # Неизвестный тип — пропускаем
+            self._process_save_queue()
+            return
+
+        # Подключаем callback'и с явным захватом
+        # ⭐ Используем functools.partial вместо lambda для надёжности
+        from functools import partial
+
+        worker.signals.success.connect(
+            partial(self._on_save_success, save_type, element_id)
+        )
+        worker.signals.error.connect(
+            partial(self._on_save_error, save_type, element_id)
+        )
+
+    def _on_save_success(self, save_type, element_id, result=None):
+        """Callback успешного сохранения"""
+        print(f"DEBUG: {save_type} success for element {element_id}")
+        # Продолжаем со следующим
+        self._process_save_queue()
+
+    def _on_save_error(self, save_type, element_id, error):
+        """Callback ошибки сохранения"""
+        print(f"DEBUG: {save_type} error for element {element_id}: {error}")
+        # Продолжаем со следующим, даже при ошибке
+        self._process_save_queue()
 
     def delete_object(self):
         selected = list(self.scene.selectedItems())
