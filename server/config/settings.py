@@ -9,14 +9,14 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str = "supersecret"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # БД
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = '2aprl2009'
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "ischeme"
+    POSTGRES_PASSWORD: str = 'DPwFoJyRoiopsUTaTtonokmRuYmkOULL'
+    POSTGRES_HOST: str = "mainline.proxy.rlwy.net"
+    POSTGRES_PORT: int = 42637
+    POSTGRES_DB: str = "railway"
 
     @property
     def DATABASE_URL(self) -> str:
