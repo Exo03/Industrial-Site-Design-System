@@ -31,7 +31,7 @@ def main():
     app.setApplicationDisplayName("Industrial Designer")
     app.setFont(QFont("Segoe UI", 10))
 
-    app.setWindowIcon(QIcon(get_resource_path("Icons/logotip.ico")))
+    app.setWindowIcon(QIcon(get_resource_path("Icons/logotip.png")))
 
 
     theme_manager.initialize(app, 'dark')
