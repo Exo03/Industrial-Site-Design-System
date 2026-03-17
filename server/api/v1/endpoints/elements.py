@@ -25,7 +25,7 @@ async def add_element_to_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))
@@ -63,7 +63,7 @@ async def get_project_elements(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))
@@ -98,7 +98,7 @@ async def delete_element(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))
@@ -129,7 +129,7 @@ async def move_element(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))
@@ -164,7 +164,7 @@ async def resize_element(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))
@@ -199,7 +199,7 @@ async def get_element(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))
@@ -228,7 +228,7 @@ async def recolor_element(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))
@@ -262,7 +262,7 @@ async def recolor_element(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    result = await db.excute(select(ProjectMember).where(
+    result = await db.execute(select(ProjectMember).where(
         ProjectMember.user_id == current_user.id,
         ProjectMember.project_id == project.id
     ))

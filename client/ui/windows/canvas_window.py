@@ -27,7 +27,23 @@ from .auth_dialog import AuthDialog
 from ...core.theme_manager import theme_manager
 from ...api.elements import rename_element
 
+import sys
+import os
+
 MOVE_DEBOUNCE_MS = 500
+
+def get_resource_path(relative_path):
+    # PyInstaller создаёт временную папку _MEIPASS
+    if hasattr(sys, '_MEIPASS'):
+        # Запущено из собранного exe
+        base_path = sys._MEIPASS
+    else:
+        # Запущено из исходников
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
 
 class CanvasWindow(QMainWindow):
     def __init__(self, project_data=None):
@@ -177,11 +193,22 @@ class CanvasWindow(QMainWindow):
 
     def update_icons_for_theme(self, theme: str):
         from PySide6.QtGui import QIcon
+
         suffix = "FFFFFF" if theme == "dark" else "000000"
-        self.ui.actionAddObject.setIcon(QIcon(f"Icons/add_24dp_{suffix}.svg"))
-        self.ui.actionEditObject.setIcon(QIcon(f"Icons/edit_24dp_{suffix}.svg"))
-        self.ui.actionDeleteObject.setIcon(QIcon(f"Icons/delete_24dp_{suffix}.svg"))
-        self.ui.actionSetArea.setIcon(QIcon(f"Icons/activity_zone_24dp_{suffix}.svg"))
+
+        # Используем get_resource_path вместо прямых путей
+        self.ui.actionAddObject.setIcon(
+            QIcon(get_resource_path(f"Icons/add_24dp_{suffix}.svg"))
+        )
+        self.ui.actionEditObject.setIcon(
+            QIcon(get_resource_path(f"Icons/edit_24dp_{suffix}.svg"))
+        )
+        self.ui.actionDeleteObject.setIcon(
+            QIcon(get_resource_path(f"Icons/delete_24dp_{suffix}.svg"))
+        )
+        self.ui.actionSetArea.setIcon(
+            QIcon(get_resource_path(f"Icons/activity_zone_24dp_{suffix}.svg"))
+        )
 
     def save_project_png(self):
         file_path, _ = QFileDialog.getSaveFileName(
