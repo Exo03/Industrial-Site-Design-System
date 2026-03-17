@@ -14,6 +14,7 @@ class User(Base):
     hashed_password = Column(String)
 
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+    project_memberships = relationship("ProjectMember", back_populates="user", cascade="all, delete-orphan")
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)
