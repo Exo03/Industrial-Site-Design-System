@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from server.config.database import get_db
-from server.schemas.project import ProjectCreate, ProjectResponse
+from server.schemas.project import ProjectCreate, ProjectResponse, ProjectResize, ProjectRename
 from server.db.models.user import User
 from server.db.models.project import Project
 from server.db.models.project_member import ProjectMember
@@ -65,14 +65,13 @@ async def delete_project(
 
 @router.put("/rename_project/{project_id}", response_model=ProjectResponse)
 async def rename_project(
-    project_id: int,
-    new_project: ProjectCreate,
+    new_project: ProjectRename,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     result = await db.execute(
         select(Project).where(
-            Project.id == project_id,
+            Project.id == new_project.id,
             Project.owner_id == current_user.id
         )
     )
@@ -147,4 +146,34 @@ async def add_member(
     await db.commit()
 
     return
+
+@router.put("/resize_project", response_model=ProjectResponse)
+async def resize_project(
+    new_size: ProjectResize,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Project).where(Project.id==new_size.id))
+
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
+    
+    result = await db.execute(select(ProjectMember).where(
+        ProjectMember.user_id == current_user.id,
+        ProjectMember.project_id == project.id
+    ))
+    member = result.scalar_one_or_none()
+
+    if not member and project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    project.length = new_size.length
+    project.width = new_size.width
+
+    await db.commit()
+    await db.refresh(project)
+
+    return project
+    
     
