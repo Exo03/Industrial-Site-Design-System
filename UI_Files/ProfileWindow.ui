@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>589</width>
-    <height>316</height>
+    <height>344</height>
    </rect>
   </property>
   <property name="font">
@@ -27,8 +27,6 @@ QLabel {
     font-weight: bold;
     color: #FFFFFF;
 }
-
-
 
 QPushButton {
     background-color: #1E1E1E;
@@ -84,17 +82,18 @@ border: rgba(0, 0, 0, 0);</string>
        <number>0</number>
       </property>
       <item>
-       <widget class="QLabel" name="label_3">
+       <widget class="QPushButton" name="exitButton">
         <property name="text">
          <string/>
         </property>
-        <property name="pixmap">
-         <pixmap>../Icons/arrow_back_24dp_FFFFFF.svg</pixmap>
+        <property name="icon">
+         <iconset>
+          <normaloff>../Icons/arrow_back_24dp_FFFFFF.svg</normaloff>../Icons/arrow_back_24dp_FFFFFF.svg</iconset>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label">
+       <widget class="QLabel" name="titleLabel">
         <property name="font">
          <font>
           <pointsize>16</pointsize>
@@ -107,12 +106,13 @@ border: rgba(0, 0, 0, 0);</string>
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_2">
+       <widget class="QPushButton" name="editButton">
         <property name="text">
          <string/>
         </property>
-        <property name="pixmap">
-         <pixmap>../Icons/edit_24dp_FFFFFF.svg</pixmap>
+        <property name="icon">
+         <iconset>
+          <normaloff>../Icons/edit_24dp_FFFFFF.svg</normaloff>../Icons/edit_24dp_FFFFFF.svg</iconset>
         </property>
        </widget>
       </item>
@@ -128,7 +128,7 @@ border: rgba(0, 0, 0, 0);</string>
       <string/>
      </property>
      <property name="pixmap">
-      <pixmap>../../../../Downloads/account_circle_48dp_FFFFFF_FILL0_wght400_GRAD0_opsz48.svg</pixmap>
+      <pixmap>../Icons/account_circle_48dp_FFFFFF.svg</pixmap>
      </property>
      <property name="scaledContents">
       <bool>false</bool>
@@ -136,7 +136,7 @@ border: rgba(0, 0, 0, 0);</string>
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label_4">
+    <widget class="QLabel" name="login_label">
      <property name="styleSheet">
       <string notr="true">background-color: rgba(255, 255, 255, 40);
 border-radius: 12px;
@@ -154,7 +154,7 @@ border: 1px solid rgba(255, 255, 255, 100);</string>
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label_5">
+    <widget class="QLabel" name="emailLabel">
      <property name="styleSheet">
       <string notr="true">background-color: rgba(255, 255, 255, 40);
 border-radius: 12px;
@@ -171,13 +171,6 @@ border: 1px solid rgba(255, 255, 255, 100);</string>
      </property>
      <property name="margin">
       <number>10</number>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="Line" name="line">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
      </property>
     </widget>
    </item>
@@ -199,13 +192,7 @@ border: 1px solid rgba(255, 255, 255, 100);</string>
       <number>0</number>
      </property>
      <item>
-      <widget class="QPushButton" name="pushButton">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="styleSheet">
-        <string notr="true"/>
-       </property>
+      <widget class="QPushButton" name="deleteButton">
        <property name="text">
         <string>Удалить аккаунт</string>
        </property>
@@ -216,13 +203,7 @@ border: 1px solid rgba(255, 255, 255, 100);</string>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_2">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="styleSheet">
-        <string notr="true"/>
-       </property>
+      <widget class="QPushButton" name="logoutButton">
        <property name="text">
         <string>Выйти из аккаунта</string>
        </property>

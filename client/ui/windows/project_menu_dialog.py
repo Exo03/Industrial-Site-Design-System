@@ -1,12 +1,14 @@
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMessageBox, QPushButton, QVBoxLayout, QWidget
 from PySide6.QtCore import Signal
 
 from ...api.projects import get_project, get_user_projects
-from ...core import AsyncWorker
+from ...core import AsyncWorker, theme_manager
 from ...session_manager import session
 from ...ui.widgets.themed_dialog import ThemedDialog
 from UI_Files.ProjectMenu import Ui_ProjectMenuWindow
 from .create_project_dialog import CreateProjectDialog
+from ...utils.paths import get_resource_path
 
 
 class ProjectMenuDialog(ThemedDialog):
@@ -23,6 +25,19 @@ class ProjectMenuDialog(ThemedDialog):
         self._setup_ui()
         self._connect_signals()
         self._load_projects()
+
+        self.update_icons_for_theme(theme_manager.current_theme)
+
+    def update_icons_for_theme(self, theme: str):
+        suffix = "FFFFFF" if theme == "dark" else "000000"
+        self.ui.pushButton.setIcon(
+            QIcon(
+                get_resource_path(f"Icons/add_24dp_{suffix}.svg"))
+        )
+        self.ui.pushButton_2.setIcon(
+            QIcon(get_resource_path(f"Icons/folder_open_24dp_{suffix}.svg"))
+        )
+
 
     def _setup_ui(self):
         """Добавляем область для списка проектов"""

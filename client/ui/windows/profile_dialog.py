@@ -1,11 +1,13 @@
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QLineEdit)
 from PySide6.QtCore import Qt
 
 from ...api.users import get_current_user
-from ...core import AsyncWorker
+from ...core import AsyncWorker, theme_manager
 from ...ui.widgets.themed_dialog import ThemedDialog
 from UI_Files.ProfileWindow import Ui_Profile
 from client.session_manager import session
+from ...utils.paths import get_resource_path
 
 
 class ProfileDialog(ThemedDialog):
@@ -14,18 +16,42 @@ class ProfileDialog(ThemedDialog):
         self.ui = Ui_Profile()
         self.ui.setupUi(self)
 
-        self.ui.label_3.setAlignment(Qt.AlignCenter)
+        self.ui.ProfIcon.setAlignment(Qt.AlignCenter)
         # Загружаем актуальные данные
         self._load_user_data()
 
-        self.ui.pushButton.clicked.connect(self._logout)
-        self.ui.pushButton_2.clicked.connect(self._delete_account)
+        self.ui.logoutButton.clicked.connect(self._logout)
+        self.ui.deleteButton.clicked.connect(self._delete_account)
+
+        self.update_icons_for_theme(theme_manager.current_theme)
+
+
+    def update_icons_for_theme(self, theme: str):
+        from PySide6.QtGui import QIcon
+
+        suffix = "FFFFFF" if theme == "dark" else "000000"
+
+        self.ui.exitButton.setIcon(
+            QIcon(
+                get_resource_path(f"Icons/arrow_back_24dp_{suffix}.svg"))
+        )
+        self.ui.editButton.setIcon(
+            QIcon(get_resource_path(f"Icons/edit_24dp_{suffix}.svg"))
+        )
+        self.ui.ProfIcon.setPixmap(
+            QPixmap(get_resource_path(f"Icons/account_circle_48dp_{suffix}.svg"))
+        )
+        self.ui.deleteButton.setIcon(
+            QIcon(get_resource_path(f"Icons/delete_24dp_{suffix}.svg"))
+        )
+        self.ui.logoutButton.setIcon(
+            QIcon(get_resource_path(f"Icons/logout_24dp_{suffix}.svg"))
+        )
 
     def _load_user_data(self):
-        """Загружает актуальные данные пользователя с сервера"""
         if not session.token:
-            self.ui.label_4.setText(session.username)
-            self.ui.label_5.setText(session.email)
+            self.ui.login_label.setText(session.username)
+            self.ui.emailLabel.setText(session.email)
             return
 
         worker = AsyncWorker.run_async(get_current_user(session.token))
@@ -34,13 +60,13 @@ class ProfileDialog(ThemedDialog):
 
     def _on_user_loaded(self, user_data: dict):
         """Обновляет UI при получении данных"""
-        self.ui.label_4.setText(user_data.get("username", session.username))
-        self.ui.label_5.setText(user_data.get("email", session.email))
+        self.ui.login_label.setText(user_data.get("username", session.username))
+        self.ui.emailLabel.setText(user_data.get("email", session.email))
 
     def _on_user_error(self, error: Exception):
         """При ошибке показываем сохраненные данные"""
-        self.ui.label_4.setText(session.username)
-        self.ui.label_5.setText(session.email)
+        self.ui.login_label.setText(session.username)
+        self.ui.emailLabel.setText(session.email)
 
     def _logout(self):
         session.logout()
