@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QStandardPaths, QSize, QTimer
 from PySide6.QtGui import QPainter, QImage, QTransform
-from PySide6.scripts.project_lib import project_data
 
 from UI_Files.MainWindow import Ui_MainWindow
 from ...api.element_types import get_element_types
