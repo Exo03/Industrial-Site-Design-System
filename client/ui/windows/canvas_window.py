@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QStandardPaths, QSize, QTimer
 from PySide6.QtGui import QPainter, QImage, QTransform
-from PySide6.scripts.project_lib import project_data
 
 from UI_Files.MainWindow import Ui_MainWindow
 from ...api.element_types import get_element_types
@@ -280,14 +279,65 @@ class CanvasWindow(QMainWindow):
         self._do_save_json(file_path)
 
     def _do_save_json(self, file_path: str):
+        """Сохраняет проект в JSON согласно структуре БД"""
         try:
+            # Данные о площадке (если есть)
+            area = self.get_workspace_area()
+            area_data = None
+            if area:
+                area_data = {
+                    "width": int(area._width_m),
+                    "length": int(area._length_m),
+                    "x": int(area.pos().x() / PIXELS_PER_METER),
+                    "y": int(area.pos().y() / PIXELS_PER_METER)
+                }
+
+            # Данные об элементах - только поля из БД
+            elements_data = []
+            for element_id, obj in self._elements_map.items():
+                # Цвет в формате #RRGGBB (убираем альфа-канал если есть)
+                color = obj._color
+                if hasattr(color, 'name'):
+                    color_str = color.name()[:7]  # Берем только #RRGGBB
+                else:
+                    color_str = str(color)[:7]
+
+                element_data = {
+                    "id": element_id,  # Серверный ID или локальный
+                    "element_type_id": getattr(obj, '_element_type_id', None),
+                    "title": obj._text[:64] if obj._text else "Объект",  # Ограничение varchar(64)
+                    "x": int(obj.pos().x() / PIXELS_PER_METER),
+                    "y": int(obj.pos().y() / PIXELS_PER_METER),
+                    "width": int(obj._width_m),
+                    "length": int(obj._height_m),
+                    "color": color_str
+                }
+                elements_data.append(element_data)
+
+            # Состояние камеры
+            viewport_center = self.graphicsView.mapToScene(
+                self.graphicsView.viewport().rect().center()
+            )
+
             project_data = {
-                "version": "1.0",
+                "version": "2.0-db",
                 "created_at": datetime.now().isoformat(),
-                "project_name": "New Project",
+                "project": {
+                    "id": self._current_project.get('id') if self._current_project else None,
+                    "name": self._current_project.get('name',
+                                                      'New Project') if self._current_project else 'New Project',
+                    "description": self._current_project.get('description', '') if self._current_project else '',
+                    "area": area_data
+                },
                 "settings": {
                     "pixels_per_meter": PIXELS_PER_METER,
-                    "grid_size": self.scene._grid_size
+                    "grid_size": getattr(self.scene, '_grid_size', 10)
+                },
+                "elements": elements_data,
+                "view": {
+                    "center_x": int(viewport_center.x()),
+                    "center_y": int(viewport_center.y()),
+                    "zoom": self.graphicsView.transform().m11()
                 }
             }
 
@@ -295,11 +345,153 @@ class CanvasWindow(QMainWindow):
                 json.dump(project_data, f, ensure_ascii=False, indent=2)
 
             self.current_project_path = file_path
-            self.statusBar().showMessage(f"✓ Сохранено: {file_path}", 5000)
-            QMessageBox.information(self, "Успех", f"Проект сохранён:\n{file_path}")
+            self.statusBar().showMessage(f"✓ Сохранено: {len(elements_data)} объектов", 5000)
 
         except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить JSON:\n{e}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить:\n{e}")
+            import traceback
+            traceback.print_exc()
+
+    def load_project_json(self):
+        """Загружает проект из JSON"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Открыть проект",
+            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation),
+            "JSON Files (*.json);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        self._do_load_json(file_path)
+
+    def _do_load_json(self, file_path: str):
+        """Загружает проект с учетом структуры БД"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Очищаем сцену
+            for item in list(self.scene.items()):
+                if isinstance(item, (SnappableObject, WorkspaceArea)):
+                    self.scene.removeItem(item)
+            self._elements_map.clear()
+
+            # Загружаем метаданные
+            project_info = data.get('project', {})
+            old_project_id = project_info.get('id')
+
+            # Создаем новый локальный проект (ID будет назначен при сохранении на сервере)
+            self._current_project = {
+                'id': None,  # Новый проект - новый ID
+                'name': project_info.get('name', 'Imported Project'),
+                'description': project_info.get('description', ''),
+                'width': None,
+                'length': None,
+                '_needs_sync': True  # Флаг, что проект нужно создать на сервере
+            }
+
+            # Загружаем площадку
+            area_data = project_info.get('area')
+            if area_data:
+                width = int(area_data.get('width', 50))
+                length = int(area_data.get('length', 50))
+                self._current_project['width'] = width
+                self._current_project['length'] = length
+
+                area = WorkspaceArea(width, length)
+                self.scene.addItem(area)
+
+                if 'x' in area_data and 'y' in area_data:
+                    area.setPos(
+                        int(area_data['x']) * PIXELS_PER_METER,
+                        int(area_data['y']) * PIXELS_PER_METER
+                    )
+                else:
+                    self.center_workspace_area()
+
+            # Загружаем элементы - создаем как новые (без привязки к старым ID)
+            elements = data.get('elements', [])
+            for elem_data in elements:
+                # Валидация обязательных полей
+                x = int(elem_data.get('x', 0))
+                y = int(elem_data.get('y', 0))
+                width = int(elem_data.get('width', 6))
+                length = int(elem_data.get('length', 4))
+
+                # Обрезаем title до 64 символов
+                title = elem_data.get('title', 'Объект')[:64]
+
+                # Нормализуем цвет
+                color = elem_data.get('color', '#96C8FF')
+                if not color.startswith('#') or len(color) != 7:
+                    color = '#96C8FF'
+
+                obj = SnappableObject(
+                    text=title,
+                    width_m=width,
+                    height_m=length,
+                    color=color,
+                    grid_size_m=0.5,
+                    pixels_per_meter=PIXELS_PER_METER
+                )
+
+                # Сбрасываем ID - объект будет создан как новый на сервере
+                # Сохраняем старый ID только для информации
+                obj._original_id = elem_data.get('id')
+                obj._element_id = None  # Новый объект
+                obj._element_type_id = elem_data.get('element_type_id')
+                obj._is_modified = True  # Помечаем для синхронизации
+
+                obj.setPos(x * PIXELS_PER_METER, y * PIXELS_PER_METER)
+                obj.geometryChanged.connect(lambda o=obj: self._on_object_moved_ui(o))
+
+                self.scene.addItem(obj)
+                # Временный ID для локальной карты
+                temp_id = f"temp_{len(self._elements_map)}"
+                self._elements_map[temp_id] = obj
+
+            # Восстанавливаем вид
+            view_data = data.get('view', {})
+            if view_data:
+                if 'center_x' in view_data and 'center_y' in view_data:
+                    self.graphicsView.centerOn(view_data['center_x'], view_data['center_y'])
+                if 'zoom' in view_data:
+                    self.graphicsView.setTransform(QTransform().scale(view_data['zoom'], view_data['zoom']))
+
+            self.check_object_collisions()
+            self.update_status_bar()
+            self.setWindowTitle(f"Industrial Designer - {self._current_project['name']} [Импорт]")
+
+            QMessageBox.information(
+                self,
+                "Проект загружен",
+                f"Загружено объектов: {len(elements)}\n"
+                f"Сохраните проект на сервере (💾), чтобы создать копию с новыми ID."
+            )
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить:\n{e}")
+            import traceback
+            traceback.print_exc()
+
+    def import_json_as_new_project(self):
+        """Импорт JSON как нового проекта с сохранением на сервер"""
+        # Сначала загружаем JSON локально
+        self.load_project_json()
+
+        # Затем предлагаем сохранить как новый проект на сервере
+        if self._current_project and self._current_project.get('_needs_sync'):
+            reply = QMessageBox.question(
+                self,
+                "Синхронизация",
+                "Сохранить импортированный проект на сервере как новый?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                self._save_imported_project_to_server()
 
     def _on_logged_in(self, username):
         self.statusBar().showMessage(f"Пользователь: {username}")
