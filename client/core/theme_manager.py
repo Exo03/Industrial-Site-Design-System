@@ -7,6 +7,7 @@ from PySide6.QtGui import QPalette, QColor
 
 from ..ui.styles.palette import ColorPalette, DARK_PALETTE, LIGHT_PALETTE, PALETTES
 from ..ui.styles.stylesheets import StylesheetGenerator
+from ..utils.paths import get_resource_path
 
 
 class ThemeManager(QObject):
@@ -93,6 +94,7 @@ class ThemeManager(QObject):
 
     def is_dark(self) -> bool:
         return self._current_theme == 'dark'
+
 
 
 # Глобальный экземпляр
