@@ -12,7 +12,7 @@ from UI_Files.MainWindow import Ui_MainWindow
 from ...api.element_types import get_element_types
 from ...api.elements import get_project_elements, move_element, delete_element, recolor_element, resize_element, \
     add_elements
-from ...api.projects import rename_project
+from ...api.projects import rename_project, resize_project
 from ...core import AsyncWorker
 from ...ui.widgets.graphics import (
     ZoomableGraphicsView, GridScene, SnappableObject,
@@ -111,8 +111,17 @@ class CanvasWindow(QMainWindow):
         if self._current_project:
             self._current_project['_area_modified'] = False
 
-        if project_data.get('width') and project_data.get('length'):
-            self.set_workspace_area(project_data['width'], project_data['length'])
+        # ⭐ Загружаем площадку из размеров проекта (width/length)
+        width = project_data.get('width')
+        length = project_data.get('length')
+
+        if width and length:
+            self.set_workspace_area(width, length)
+            print(f"DEBUG: Загружена площадка {width}x{length} из проекта")
+        else:
+            # Если размеры не заданы — создаём дефолтную
+            self.set_workspace_area(50, 50)
+            print("DEBUG: Создана дефолтная площадка 50x50")
 
         self._load_elements()
 
@@ -128,19 +137,13 @@ class CanvasWindow(QMainWindow):
 
     def _on_elements_loaded(self, elements: list):
         # Удаляем только объекты, не площадку!
-        for item in list(self.scene.items()):  # list() для безопасного удаления
+        for item in list(self.scene.items()):
             if isinstance(item, SnappableObject):
                 self.scene.removeItem(item)
 
         self._elements_map.clear()
 
-        # Площадку НЕ трогаем, она уже создана в _load_project
-        # Но если вдруг нет — создаём
-        if not self.get_workspace_area() and self._current_project:
-            width = self._current_project.get('width', 50)
-            length = self._current_project.get('length', 50)
-            if width and length:
-                self.set_workspace_area(width, length)
+        # Площадку НЕ трогаем — она уже загружена в _load_project
 
         # Создаём объекты
         for elem_data in elements:
@@ -530,10 +533,8 @@ class CanvasWindow(QMainWindow):
         area = WorkspaceArea(width_m, height_m)
         self.scene.addItem(area)
 
-        # Центр видимой области
+        # Центрируем площадку в центре текущей видимой области
         center_pos = self.get_viewport_center_scene_pos()
-
-        # Центрируем площадку относительно видимой области
         area_width_px = width_m * PIXELS_PER_METER
         area_height_px = height_m * PIXELS_PER_METER
 
@@ -913,28 +914,37 @@ class CanvasWindow(QMainWindow):
             QMessageBox.information(self, "Успех", f"Сохранено: {', '.join(success_messages)}")
 
     def _save_area_to_server(self) -> tuple:
-        """Сохраняет размеры площадки. Возвращает (success: bool, error: bool)"""
+        """Сохраняет размеры площадки через resize_project. Возвращает (success: bool, error: bool)"""
         try:
             area = self.get_workspace_area()
             if not area:
-                return (False, False)  # Нет площадки для сохранения
+                return (False, False)
 
             width_m = int(area._width_m)
             height_m = int(area._height_m)
 
-            # Используем AsyncWorker вместо синхронного вызова
+            # Используем resize_project вместо rename_project
+            worker = AsyncWorker.run_async(
+                resize_project(
+                    project_id=self._current_project['id'],
+                    width=width_m,
+                    length=height_m,
+                    token=session.token
+                )
+            )
+
+            # Синхронное ожидание для совместимости с текущей логикой
             import asyncio
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-
-            result = loop.run_until_complete(rename_project(
-                project_id=self._current_project['id'],
-                name=self._current_project.get('name', 'Без названия'),
-                description=self._current_project.get('description', ''),
-                width=width_m,
-                length=height_m,
-                token=session.token
-            ))
+            result = loop.run_until_complete(
+                resize_project(
+                    project_id=self._current_project['id'],
+                    width=width_m,
+                    length=height_m,
+                    token=session.token
+                )
+            )
             loop.close()
 
             # Обновляем локальные данные

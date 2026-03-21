@@ -13,6 +13,7 @@ class RegisterDialog(ThemedDialog):
         super().__init__(parent)
         self.ui = Ui_RegisterWindow()
         self.ui.setupUi(self)
+        self._registered_username = None  # Для передачи в AuthDialog
         self._connect_signals()
 
     def _connect_signals(self):
@@ -31,7 +32,7 @@ class RegisterDialog(ThemedDialog):
         self._set_loading(True)
 
         worker = AsyncWorker.run_async(register(email, login_text, password))
-        worker.signals.success.connect(self._on_success)
+        worker.signals.success.connect(lambda: self._on_success(login_text))  # Передаём логин
         worker.signals.error.connect(self._on_error)
 
     def _validate(self, login: str, email: str, password: str) -> bool:
@@ -49,7 +50,8 @@ class RegisterDialog(ThemedDialog):
 
         return True
 
-    def _on_success(self, data: dict):
+    def _on_success(self, username: str):
+        self._registered_username = username  # Сохраняем для возврата
         QMessageBox.information(self, "Успешно", "Регистрация завершена!")
         self.accept()
 
