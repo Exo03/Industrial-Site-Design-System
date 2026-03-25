@@ -18,16 +18,17 @@ create table projects (
 
 create table element_types (
     id serial not null primary key ,
+    length int not null ,
+    width int not null ,
     title varchar(64) not null ,
-    description varchar(64)
+    description varchar(64) ,
+    type_category int
 ) ;
 
 create table elements (
     id serial not null primary key ,
     x int not null ,
     y int not null ,
-    length int not null ,
-    width int not null ,
     title varchar(64) ,
     color varchar(8) ,
     project_id int references projects(id) ,

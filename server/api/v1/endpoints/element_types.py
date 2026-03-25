@@ -7,7 +7,7 @@ from server.db.models.project import Project
 from server.api.v1.dependencies import get_current_user
 from server.db.models.user import User
 from server.db.models.element_type import ElementType
-from server.schemas.element_type import ElementTypeResponse
+from server.schemas.element_type import ElementTypeResponse, ElementTypeCreate
 
 router = APIRouter()
 
@@ -41,6 +41,25 @@ async def get_element_type(
         raise HTTPException(status_code=404, detail="Тип элемента не найден")
 
     return element_type
+
+@router.post("/upload_element_type", response_model=ElementTypeResponse)
+async def upload(
+    type: ElementTypeCreate,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    new_type = ElementType(
+        title = type.title,
+        length = type.length,
+        width = type.width,
+        description = type.description
+    )
+
+    db.add(new_type)
+    await db.commit()
+    await db.refresh(new_type)
+    return new_type
+    
 
 @router.get("/all_element_types", response_model=list[ElementTypeResponse])
 async def get_element_types(
