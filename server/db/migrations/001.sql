@@ -20,6 +20,8 @@ create table element_types (
     id serial not null primary key ,
     length int not null ,
     width int not null ,
+    zone_width int not null,
+    zone_length int not null,
     title varchar(64) not null ,
     description varchar(64) ,
     type_category int

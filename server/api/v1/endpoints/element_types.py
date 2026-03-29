@@ -52,6 +52,8 @@ async def upload(
         title = type.title,
         length = type.length,
         width = type.width,
+        zone_length = type.zone_length,
+        zone_width = type.zone_width,
         description = type.description
     )
 
