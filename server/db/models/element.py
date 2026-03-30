@@ -10,8 +10,6 @@ class Element(Base):
     element_type_id = Column(Integer, ForeignKey("element_types.id"), index=True, nullable=False)
     x = Column(Integer)
     y = Column(Integer)
-    length = Column(Integer)
-    width = Column(Integer)
     title = Column(String)
     color = Column(String)
 

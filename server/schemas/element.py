@@ -5,8 +5,6 @@ class ElementCreate(BaseModel):
     element_type_id: int
     x: int
     y: int
-    width: int
-    length: int
     title: str
     color: str
 
@@ -15,8 +13,6 @@ class ElementResponse(BaseModel):
     element_type_id: int
     x: int
     y: int
-    width: int
-    length: int
     title: str
     color: str
 
@@ -28,10 +24,6 @@ class ElementMove(BaseModel):
     x: int
     y: int
 
-class ElementResize(BaseModel):
-    id: int
-    width: int
-    length: int
 
 class ElementRename(BaseModel):
     id: int
