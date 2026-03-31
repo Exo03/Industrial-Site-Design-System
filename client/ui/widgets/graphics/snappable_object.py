@@ -9,7 +9,8 @@ PIXELS_PER_METER = 20
 
 class SnappableObject(QGraphicsObject):
     def __init__(self, text="Объект", width_m=6.0, height_m=4.0, color="#96C8FF",
-                 grid_size_m=0.5, pixels_per_meter=PIXELS_PER_METER, parent=None):
+                 grid_size_m=0.5, pixels_per_meter=PIXELS_PER_METER, parent=None,
+                 zone_margin_m=0.0):  # ⭐ Добавили margin
         super().__init__(parent)
         self._pixels_per_meter = pixels_per_meter
         self._grid_size_m = grid_size_m
@@ -17,6 +18,11 @@ class SnappableObject(QGraphicsObject):
         self._height_m = height_m
         self._text = text
         self._color = QColor(color)
+
+        # ⭐ Новые свойства зоны
+        self._zone_margin_m = zone_margin_m
+        self._is_zone_outside_area = False
+        self._is_zone_overlapping = False
 
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
@@ -28,8 +34,31 @@ class SnappableObject(QGraphicsObject):
     def _px(self, meters):
         return meters * self._pixels_per_meter
 
-    def boundingRect(self):
+    def bodyRect(self):
+        """Прямоугольник самого объекта (без зоны)"""
         return QRectF(0, 0, self._px(self._width_m), self._px(self._height_m))
+
+    def zoneRect(self):
+        """Прямоугольник зоны обслуживания"""
+        margin_px = self._px(self._zone_margin_m)
+        return QRectF(-margin_px, -margin_px,
+                      self._px(self._width_m) + 2 * margin_px,
+                      self._px(self._height_m) + 2 * margin_px)
+
+    def boundingRect(self):
+        """Возвращает общие границы элемента (включая зону) для отрисовки"""
+        return self.zoneRect()
+
+    # Сеттеры для состояний зоны
+    def set_zone_outside_area(self, is_outside: bool):
+        if self._is_zone_outside_area != is_outside:
+            self._is_zone_outside_area = is_outside
+            self.update()
+
+    def set_zone_overlapping(self, is_overlapping: bool):
+        if self._is_zone_overlapping != is_overlapping:
+            self._is_zone_overlapping = is_overlapping
+            self.update()
 
     def set_outside_area(self, is_outside: bool):
         if self._is_outside_area != is_outside:
@@ -41,45 +70,70 @@ class SnappableObject(QGraphicsObject):
             self._is_overlapping = is_overlapping
             self.update()
 
+    def update_zone_margin(self, margin_m):
+        """Обновляет отступ зоны и перерисовывает"""
+        self.prepareGeometryChange()
+        self._zone_margin_m = margin_m
+        self.update()
+
     def paint(self, painter, option, widget=None):
         w_px = self._px(self._width_m)
         h_px = self._px(self._height_m)
+        margin_px = self._px(self._zone_margin_m)
 
+        # 1. ОТРИСОВКА ЗОНЫ ОБСЛУЖИВАНИЯ (рисуем первой, чтобы она была "под" объектом)
+        if margin_px > 0:
+            if self._is_zone_outside_area:
+                fill_color = QColor(255, 0, 0, 50)  # Полупрозрачный красный
+                pen_color = QColor(255, 0, 0, 255)  # Сплошной красный
+            elif self._is_zone_overlapping:
+                fill_color = QColor(255, 255, 0, 50)  # Полупрозрачный желтый
+                pen_color = QColor(255, 255, 0, 255)  # Сплошной желтый
+            else:
+                fill_color = QColor(128, 128, 128, 30)  # Почти прозрачный
+                is_dark = theme_manager.current_theme == "dark"
+                pen_color = QColor(255, 255, 255, 200) if is_dark else QColor(0, 0, 0, 200)
+
+            painter.setBrush(QBrush(fill_color))
+            pen = QPen(pen_color)
+            pen.setWidth(1)
+            painter.setPen(pen)
+            painter.drawRect(self.zoneRect())
+
+        # 2. ОТРИСОВКА САМОГО ОБЪЕКТА
         painter.setBrush(QBrush(self._color))
         base_pen = QPen(QColor(0, 0, 0, 150))
         base_pen.setWidth(1)
         painter.setPen(base_pen)
-        painter.drawRect(0, 0, w_px, h_px)
+        painter.drawRect(self.bodyRect())
 
         self._draw_wrapped_text(painter, w_px, h_px)
 
+        # Выделение объекта
         if self.isSelected():
-
-            if theme_manager.current_theme == "dark":
-                color = QColor(255, 255, 255)
-            else:
-                color = QColor(255, 255, 255)
-
+            color = QColor(255, 255, 255)
             pen = QPen(color)
             pen.setWidth(1)
             pen.setStyle(Qt.DashLine)
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(0, 0, w_px, h_px)
+            painter.drawRect(self.bodyRect())
 
+        # Коллизия самого объекта
         if self._is_overlapping:
             yellow_pen = QPen(QColor(255, 255, 0))
             yellow_pen.setWidth(2)
             painter.setPen(yellow_pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(0, 0, w_px, h_px)
+            painter.drawRect(self.bodyRect())
 
+        # Выход объекта за пределы площадки
         if self._is_outside_area:
             red_pen = QPen(QColor(255, 0, 0))
             red_pen.setWidth(2)
             painter.setPen(red_pen)
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(0, 0, w_px, h_px)
+            painter.drawRect(self.bodyRect())
 
     def _draw_wrapped_text(self, painter, w_px, h_px):
         margin = max(4, int(min(w_px, h_px) * 0.05))

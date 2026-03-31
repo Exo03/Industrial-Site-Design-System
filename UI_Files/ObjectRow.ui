@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ObjectRow</class>
+ <widget class="QWidget" name="ObjectRow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>636</width>
+    <height>128</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>objectRow</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <widget class="QFrame" name="objectRow">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16772</width>
+       <height>48</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QFrame {
+	border: 1px solid #5F5F5F;
+	border-radius: 4px;
+}
+
+QLabel {
+	background-color: transparent;
+	border: 0px transparent;
+}
+
+QPushButton {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    border: 1px solid #333333;
+    border-radius: 4px;
+    font-weight: 500;
+	text-align: center;
+	height: 36px;
+}
+
+QPushButton:hover {
+    background-color: #333333;
+}
+
+QPushButton:pressed {
+    background-color: #BB86FC;
+    color: black;
+}</string>
+     </property>
+     <layout class="QHBoxLayout" name="object">
+      <item>
+       <widget class="QLabel" name="objectNameLabel">
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:400;&quot;&gt;Объект 1&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>208</width>
+          <height>23</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="editButton">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>../Icons/edit_24dp_FFFFFF.svg</normaloff>../Icons/edit_24dp_FFFFFF.svg</iconset>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="deleteButton">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>../Icons/delete_24dp_FFFFFF.svg</normaloff>../Icons/delete_24dp_FFFFFF.svg</iconset>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
