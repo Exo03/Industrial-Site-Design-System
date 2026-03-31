@@ -17,3 +17,13 @@ class ProjectResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ProjectResize(BaseModel):
+    id: int
+    width: int
+    length: int
+
+class ProjectRename(BaseModel):
+    id: int
+    name: str
+    description: str

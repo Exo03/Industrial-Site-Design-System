@@ -35,6 +35,11 @@ class StylesheetGenerator:
             border: none;
         }}
         
+        QFrame#objectRow {{
+            border: 1px solid #5F5F5F;
+            border-radius: 4px;
+        }}
+        
         QWidget#equipmentContainer {{
         background-color: transparent;
         border: none;
@@ -51,7 +56,8 @@ class StylesheetGenerator:
 
         QLabel#label,
         QLabel#authLabel,
-        QLabel#headline {{
+        QLabel#headline,
+        QLabel#titleLabel {{
             font-size: 20pt;
             font-weight: bold;
             qproperty-alignment: AlignCenter;

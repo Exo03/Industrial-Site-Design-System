@@ -8,6 +8,7 @@ from client.session_manager import session
 from client.ui.windows import AuthDialog, ProjectMenuDialog, CanvasWindow
 from client.utils.paths import get_resource_path
 
+
 def main():
     if sys.platform == 'win32':
         import ctypes
@@ -26,14 +27,23 @@ def main():
 
     app.setWindowIcon(QIcon(get_resource_path("Icons/logotip.ico")))
 
-
     theme_manager.initialize(app, 'dark')
 
-    if not session.is_authenticated:
+    # Цикл авторизации: показываем AuthDialog пока не будет успешного входа или закрытия
+    while not session.is_authenticated:
         auth_dialog = AuthDialog()
-        if auth_dialog.exec() != AuthDialog.Accepted:
-            sys.exit(0)
+        result = auth_dialog.exec()
 
+        # Цикл авторизации: показываем AuthDialog пока не будет успешного входа или закрытия
+        while not session.is_authenticated:
+            auth_dialog = AuthDialog()
+            auth_dialog.exec()
+            # После exec() проверяем, авторизовался ли пользователь
+            # Если нет — значит диалог был закрыт (X или "назад"), выходим
+            if not session.is_authenticated:
+                sys.exit(0)
+
+    # Успешная авторизация — продолжаем
     menu_dialog = ProjectMenuDialog()
     result = menu_dialog.exec()
 

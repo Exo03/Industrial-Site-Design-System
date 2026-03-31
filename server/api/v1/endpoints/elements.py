@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, exists
 from sqlalchemy.exc import IntegrityError
 from server.config.database import get_db
-from server.schemas.element import ElementCreate, ElementResponse, ElementMove, ElementResize, ElementRecolor, ElementRename
+from server.schemas.element import ElementCreate, ElementResponse, ElementMove, ElementRecolor, ElementRename
 from server.db.models.project_member import ProjectMember
 from server.db.models.element import Element
 from server.db.models.project import Project
@@ -38,8 +38,6 @@ async def add_element_to_project(
         element_type_id=element.element_type_id,
         x=element.x,
         y=element.y,
-        width=element.width,
-        length=element.length,
         project_id=element.project_id,
         title = element.title,
         color = element.color
@@ -146,40 +144,6 @@ async def move_element(
 
     return element
 
-@router.put("/resize_element", response_model=ElementResponse)
-async def resize_element(
-    new_size: ElementResize,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    result = await db.execute(select(Element).where(Element.id == new_size.id))
-    element = result.scalar_one_or_none()
-
-    if not element:
-        raise HTTPException(status_code=404, detail="Элемент не найден")
-    
-    result = await db.execute(select(Project).where(Project.id == element.project_id,))
-    project = result.scalar_one_or_none()
-    
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    result = await db.execute(select(ProjectMember).where(
-        ProjectMember.user_id == current_user.id,
-        ProjectMember.project_id == project.id
-    ))
-    member = result.scalar_one_or_none()
-
-    if not member and project.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    element.width = new_size.width
-    element.length = new_size.length
-
-    await db.commit()
-    await db.refresh(element)
-
-    return element
 
 @router.get("/element/{element_id}", response_model=ElementResponse)
 async def get_element(

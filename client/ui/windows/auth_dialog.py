@@ -16,6 +16,7 @@ class AuthDialog(ThemedDialog):
         self.ui.setupUi(self)
         self._setup_ui()
         self._connect_signals()
+        self._registration_successful = False  # Флаг успешной регистрации
 
     def _setup_ui(self):
         self.ui.pushButton.setText("Войти")
@@ -65,6 +66,7 @@ class AuthDialog(ThemedDialog):
             username=data["username"],
             user_id=data.get("user_id")
         )
+        self._registration_successful = True  # Успешный вход
         self.accept()
 
     def _on_login_error(self, error: Exception):
@@ -89,11 +91,19 @@ class AuthDialog(ThemedDialog):
         from .register_dialog import RegisterDialog
 
         self.hide()
-        reg_dialog = RegisterDialog(self.parent())
+        reg_dialog = RegisterDialog(self)
 
-        if reg_dialog.exec() == RegisterDialog.Accepted:
-            pass
+        result = reg_dialog.exec()
 
+        # Показываем окно авторизации снова в любом случае
         self.show()
         self.raise_()
         self.activateWindow()
+
+        # Если регистрация успешна, заполняем поле логина
+        if result == RegisterDialog.Accepted:
+            registered_username = getattr(reg_dialog, '_registered_username', None)
+            if registered_username:
+                self.ui.loginLineEdit.setText(registered_username)
+                self.ui.passwordLineEdit.clear()
+                self.ui.passwordLineEdit.setFocus()

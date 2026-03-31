@@ -109,3 +109,30 @@ async def get_project(project_id: int, token: str) -> dict:
             raise ValueError("Не удалось загрузить проект")
     except (httpx.ConnectTimeout, httpx.RequestError):
         raise ValueError("Сервер недоступен. Проверьте подключение")
+
+async def resize_project(project_id: int, width: int, length: int, token: str) -> dict:
+    try:
+        async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=15.0) as client:
+            response = await client.put(
+                "/api/v1/resize_project",
+                json={
+                    "id": project_id,
+                    "width": width,
+                    "length": length
+                },
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            response.raise_for_status()
+            return response.json()
+
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 401:
+            raise ValueError("Сессия истекла. Войдите снова.")
+        elif e.response.status_code == 403:
+            raise ValueError("Доступ запрещен")
+        elif e.response.status_code == 404:
+            raise ValueError("Проект не найден")
+        else:
+            raise ValueError("Не удалось изменить размер проекта")
+    except (httpx.ConnectTimeout, httpx.RequestError):
+        raise ValueError("Сервер недоступен. Проверьте подключение")

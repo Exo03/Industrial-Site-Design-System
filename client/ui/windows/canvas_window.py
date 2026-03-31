@@ -1,18 +1,20 @@
 import json
 from datetime import datetime
+from functools import partial
 
 from PySide6.QtWidgets import (
     QMainWindow, QVBoxLayout, QLabel, QMessageBox, QFileDialog,
-    QStyleOptionGraphicsItem, QStyle, QApplication, QGraphicsView
+    QStyleOptionGraphicsItem, QStyle, QApplication, QGraphicsView, QDialog
 )
 from PySide6.QtCore import Qt, QStandardPaths, QSize, QTimer
 from PySide6.QtGui import QPainter, QImage, QTransform
 
 from UI_Files.MainWindow import Ui_MainWindow
-from ...api.element_types import get_element_types
+from .add_object_window import AddObjectDialog
+from ...api.element_types import get_element_types, upload_element_type
 from ...api.elements import get_project_elements, move_element, delete_element, recolor_element, resize_element, \
     add_elements
-from ...api.projects import rename_project
+from ...api.projects import rename_project, resize_project
 from ...core import AsyncWorker
 from ...ui.widgets.graphics import (
     ZoomableGraphicsView, GridScene, SnappableObject,
@@ -59,16 +61,15 @@ class CanvasWindow(QMainWindow):
         layout.setSpacing(0)
         layout.addWidget(self.graphicsView)
 
-        self.graphicsView.centerOn(500, 500)
         self.ui.graphicsView = self.graphicsView
 
         self.ui.graphicsView.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.ui.graphicsView.centerOn(500, 500)
 
         self.ui.actionAddObject.triggered.connect(self.add_object)
         self.ui.actionEditObject.triggered.connect(self.edit_object)
         self.ui.actionDeleteObject.triggered.connect(self.delete_object)
         self.ui.actionSetArea.triggered.connect(self.set_area)
+        self.ui.actionAddObjectsList.triggered.connect(self.add_objects_list)
         self.ui.action_8.triggered.connect(self.open_auth_dialog)
         self.ui.actionSavePNG.triggered.connect(self.save_project_png)
         self.ui.actionSaveJSON.triggered.connect(self.save_project_json)
@@ -90,19 +91,43 @@ class CanvasWindow(QMainWindow):
             self._load_project(project_data)
 
     def _load_element_types(self):
-        if not session.token:
-            return
+        self.ui.comboBox.clear()
+        self._custom_objects = []
 
+        # Асинхронно загружаем все типы оборудования из базы
         worker = AsyncWorker.run_async(get_element_types())
+
+        # Защита от GC
+        if not hasattr(self, '_active_workers'):
+            self._active_workers = set()
+        self._active_workers.add(worker)
+
         worker.signals.success.connect(self._on_types_loaded)
         worker.signals.error.connect(lambda e: print(f"Ошибка загрузки типов: {e}"))
+        worker.signals.finished.connect(partial(self._cleanup_worker, worker=worker))
 
     def _on_types_loaded(self, types: list):
         self._element_types = types
         self.ui.comboBox.clear()
 
         for etype in types:
-            self.ui.comboBox.addItem(etype['title'], etype['id'])  # Сохраняем ID в data
+            width = float(etype.get('width', 6.0))
+            length = float(etype.get('length', 4.0))
+            zone_width = float(etype.get('zone_width', width))
+
+            # Вычисляем обратно margin: (zone_width - width) / 2
+            margin = (zone_width - width) / 2 if zone_width > width else 0.0
+
+            template_data = {
+                'name': etype.get('title'),
+                'width': width,
+                'length': length,
+                'color': etype.get('color', '#96C8FF'),
+                'element_type_id': etype.get('id'),
+                'zone_margin': margin  # Восстанавливаем отступ
+            }
+
+            self._add_template_to_combobox(template_data)
 
     def _load_project(self, project_data: dict):
         self._current_project = project_data
@@ -111,8 +136,17 @@ class CanvasWindow(QMainWindow):
         if self._current_project:
             self._current_project['_area_modified'] = False
 
-        if project_data.get('width') and project_data.get('length'):
-            self.set_workspace_area(project_data['width'], project_data['length'])
+        # ⭐ Загружаем площадку из размеров проекта (width/length)
+        width = project_data.get('width')
+        length = project_data.get('length')
+
+        if width and length:
+            self.set_workspace_area(width, length)
+            print(f"DEBUG: Загружена площадка {width}x{length} из проекта")
+        else:
+            # Если размеры не заданы — создаём дефолтную
+            self.set_workspace_area(50, 50)
+            print("DEBUG: Создана дефолтная площадка 50x50")
 
         self._load_elements()
 
@@ -128,29 +162,34 @@ class CanvasWindow(QMainWindow):
 
     def _on_elements_loaded(self, elements: list):
         # Удаляем только объекты, не площадку!
-        for item in list(self.scene.items()):  # list() для безопасного удаления
+        for item in list(self.scene.items()):
             if isinstance(item, SnappableObject):
                 self.scene.removeItem(item)
 
         self._elements_map.clear()
 
-        # Площадку НЕ трогаем, она уже создана в _load_project
-        # Но если вдруг нет — создаём
-        if not self.get_workspace_area() and self._current_project:
-            width = self._current_project.get('width', 50)
-            length = self._current_project.get('length', 50)
-            if width and length:
-                self.set_workspace_area(width, length)
-
         # Создаём объекты
         for elem_data in elements:
+            # ⭐ Ищем сохраненную зону в типах оборудования
+            type_id = elem_data.get('element_type_id')
+            margin = 0.0
+            if type_id:
+                for etype in self._element_types:
+                    if etype.get('id') == type_id:
+                        w = float(etype.get('width', 6.0))
+                        z_w = float(etype.get('zone_width', w))
+                        if z_w > w:
+                            margin = (z_w - w) / 2
+                        break
+
             obj = SnappableObject(
                 text=elem_data.get('title', 'Объект'),
                 width_m=elem_data.get('width', 6.0),
                 height_m=elem_data.get('length', 4.0),
                 color=elem_data.get('color', '#96C8FF'),
                 grid_size_m=0.5,
-                pixels_per_meter=PIXELS_PER_METER
+                pixels_per_meter=PIXELS_PER_METER,
+                zone_margin_m=margin  # ⭐ ТЕПЕРЬ ЗОНА НЕ БУДЕТ СБРАСЫВАТЬСЯ В 0
             )
 
             obj._element_id = elem_data['id']
@@ -167,9 +206,21 @@ class CanvasWindow(QMainWindow):
 
             self._elements_map[elem_data['id']] = obj
 
+        # ⭐ Важно: принудительно обновляем сцену перед проверками
+        self.scene.update()
+
+        # ⭐ Проверяем границы для каждого объекта явно
+        for obj in self._elements_map.values():
+            self.check_object_bounds(obj)
+
         self.check_object_collisions()
         self.update_status_bar()
         self.statusBar().showMessage(f"Загружено элементов: {len(elements)}", 3000)
+
+    def _perform_post_load_checks(self):
+        """Выполняет проверки после полной инициализации сцены"""
+        self.check_object_collisions()
+        self.update_status_bar()
 
     def _on_elements_error(self, error: Exception):
         QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить элементы:\n{error}")
@@ -409,7 +460,22 @@ class CanvasWindow(QMainWindow):
                         int(area_data['y']) * PIXELS_PER_METER
                     )
                 else:
-                    self.center_workspace_area()
+                    # ⭐ Размещаем в центре сцены (5000, 5000)
+                    width_px = width * PIXELS_PER_METER
+                    height_px = length * PIXELS_PER_METER
+
+                    scene_center_x = self.scene.width() / 2
+                    scene_center_y = self.scene.height() / 2
+
+                    area.setPos(
+                        scene_center_x - width_px / 2,
+                        scene_center_y - height_px / 2
+                    )
+
+                    # Центрируем вид на центр сцены
+                QTimer.singleShot(0, lambda: self.graphicsView.centerOn(
+                    self.scene.width() / 2, self.scene.height() / 2
+                ))
 
             # Загружаем элементы - создаем как новые (без привязки к старым ID)
             elements = data.get('elements', [])
@@ -530,17 +596,21 @@ class CanvasWindow(QMainWindow):
         area = WorkspaceArea(width_m, height_m)
         self.scene.addItem(area)
 
-        # Центр видимой области
-        center_pos = self.get_viewport_center_scene_pos()
-
-        # Центрируем площадку относительно видимой области
+        # ⭐ Размещаем площадку в центре сцены (5000, 5000)
         area_width_px = width_m * PIXELS_PER_METER
         area_height_px = height_m * PIXELS_PER_METER
 
+        # Центр сцены
+        scene_center_x = self.scene.width() / 2  # 5000
+        scene_center_y = self.scene.height() / 2  # 5000
+
         area.setPos(
-            center_pos.x() - area_width_px / 2,
-            center_pos.y() - area_height_px / 2
+            scene_center_x - area_width_px / 2,
+            scene_center_y - area_height_px / 2
         )
+
+        # Центрируем вид на центр сцены (5000, 5000), если нужно
+        QTimer.singleShot(0, lambda: self.graphicsView.centerOn(scene_center_x, scene_center_y))
 
     def get_workspace_area(self):
         for item in self.scene.items():
@@ -562,31 +632,87 @@ class CanvasWindow(QMainWindow):
         area = self.get_workspace_area()
         if not area:
             obj.set_outside_area(False)
+            obj.set_zone_outside_area(False)
             return False
 
-        obj_rect = obj.mapToScene(obj.boundingRect()).boundingRect()
         area_rect = area.mapToScene(area.boundingRect()).boundingRect()
 
-        is_outside = not area_rect.contains(obj_rect)
-        obj.set_outside_area(is_outside)
-        return is_outside
+        # Проверяем сам объект (body)
+        obj_body_rect = obj.mapToScene(obj.bodyRect()).boundingRect()
+        is_obj_outside = not area_rect.contains(obj_body_rect)
+        obj.set_outside_area(is_obj_outside)
+
+        # Проверяем зону обслуживания
+        if obj._zone_margin_m > 0:
+            obj_zone_rect = obj.mapToScene(obj.zoneRect()).boundingRect()
+            is_zone_outside = not area_rect.contains(obj_zone_rect)
+            obj.set_zone_outside_area(is_zone_outside)
+        else:
+            obj.set_zone_outside_area(is_obj_outside)
+
+        return is_obj_outside
 
     def check_object_collisions(self):
         objects = [item for item in self.scene.items() if isinstance(item, SnappableObject)]
 
+        # Сначала сбрасываем флаги для всех
         for obj in objects:
             obj.set_overlapping(False)
+            obj.set_zone_overlapping(False)
 
         for i, obj1 in enumerate(objects):
             for j, obj2 in enumerate(objects):
                 if i >= j:
                     continue
-                obj1_rect = obj1.mapToScene(obj1.boundingRect()).boundingRect()
-                obj2_rect = obj2.mapToScene(obj2.boundingRect()).boundingRect()
 
-                if obj1_rect.intersects(obj2_rect):
+                # 1. Проверяем столкновение самих объектов
+                body1_rect = obj1.mapToScene(obj1.bodyRect()).boundingRect()
+                body2_rect = obj2.mapToScene(obj2.bodyRect()).boundingRect()
+
+                if body1_rect.intersects(body2_rect):
                     obj1.set_overlapping(True)
                     obj2.set_overlapping(True)
+
+                # 2. Проверяем пересечение зон обслуживания
+                zone1_rect = obj1.mapToScene(obj1.zoneRect()).boundingRect()
+                zone2_rect = obj2.mapToScene(obj2.zoneRect()).boundingRect()
+
+                if zone1_rect.intersects(zone2_rect):
+                    # Отмечаем ошибку зоны, только если хотя бы у одного объекта есть зона
+                    if obj1._zone_margin_m > 0 or obj2._zone_margin_m > 0:
+                        obj1.set_zone_overlapping(True)
+                        obj2.set_zone_overlapping(True)
+
+    def update_status_bar(self):
+        area = self.get_workspace_area()
+        outside_names = []
+        overlapping_names = []
+        zone_outside_names = []
+        zone_overlapping_names = []
+
+        for item in self.scene.items():
+            if isinstance(item, SnappableObject):
+                if item._is_outside_area:
+                    outside_names.append(item._text)
+                elif item._is_zone_outside_area:
+                    zone_outside_names.append(item._text)
+
+                if item._is_overlapping:
+                    overlapping_names.append(item._text)
+                elif item._is_zone_overlapping:
+                    zone_overlapping_names.append(item._text)
+
+        messages = []
+        if outside_names:
+            messages.append("⚠️ Вне площадки: " + ", ".join(outside_names))
+        if zone_outside_names:
+            messages.append("🟥 Зона обслуживания вне площадки: " + ", ".join(zone_outside_names))
+        if overlapping_names:
+            messages.append("🔴 Объекты пересекаются: " + ", ".join(overlapping_names))
+        if zone_overlapping_names:
+            messages.append("🟡 Зоны обслуживания пересекаются: " + ", ".join(zone_overlapping_names))
+
+        self.status_label.setText(" | ".join(messages) if messages else "")
 
     def _on_object_moved_ui(self, obj: SnappableObject):
         """Только UI обновления при перемещении, без отправки на сервер"""
@@ -596,41 +722,203 @@ class CanvasWindow(QMainWindow):
         self.update_status_bar()
 
     def add_object(self):
-        """Добавляет объект на сервер и на сцену"""
+        """Добавляет выбранный из combobox объект на сцену"""
         if not self._current_project or not session.token:
             QMessageBox.warning(self, "Ошибка", "Нет активного проекта")
             return
 
         index = self.ui.comboBox.currentIndex()
-        if index < 0 or not self._element_types:
-            QMessageBox.warning(self, "Ошибка", "Выберите тип оборудования")
+        if index < 0:
+            QMessageBox.warning(self, "Ошибка", "Сначала добавьте объекты через диалог (+)")
             return
 
-        element_type_id = self.ui.comboBox.currentData()
-        selected_type = self.ui.comboBox.currentText()
-
-        # Центр видимой области в координатах сцены (в метрах)
-        center_pos = self.get_viewport_center_scene_pos()
-        x_pos = center_pos.x() / PIXELS_PER_METER
-        y_pos = center_pos.y() / PIXELS_PER_METER
+        obj_data = self.ui.comboBox.currentData()
+        if not obj_data:
+            return
 
         self.statusBar().showMessage("Создание объекта...", 3000)
+
+        center_pos = self.get_viewport_center_scene_pos()
+        x_pos = int(center_pos.x() / PIXELS_PER_METER)
+        y_pos = int(center_pos.y() / PIXELS_PER_METER)
+
+        # ⭐ Используем ID типа из данных объекта, а не жесткую единицу
+        type_id = obj_data.get('element_type_id', 1)
+
+        worker = AsyncWorker.run_async(add_elements(
+            project_id=self._current_project['id'],
+            element_type_id=type_id,
+            x=x_pos,
+            y=y_pos,
+            width=float(obj_data['width']), # Используем float для точности
+            length=float(obj_data['length']),
+            title=obj_data['name'],
+            color=obj_data['color'],
+            token=session.token
+        ))
+
+        # ⭐ ЗАЩИТА ОТ GC: Обязательно добавляем в активные воркеры
+        if not hasattr(self, '_active_workers'):
+            self._active_workers = set()
+        self._active_workers.add(worker)
+
+        zone = float(obj_data.get('zone_margin', 0.0))
+        worker.signals.success.connect(
+            partial(self._on_object_created, zone_margin=zone)
+        )
+        worker.signals.error.connect(self._on_object_create_error)
+        worker.signals.finished.connect(partial(self._cleanup_worker, worker=worker))
+
+    def add_objects_list(self):
+        """Открывает диалог добавления нескольких объектов"""
+        if not self._current_project or not session.token:
+            QMessageBox.warning(self, "Ошибка", "Нет активного проекта")
+            return
+
+        dialog = AddObjectDialog(self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        objects = dialog.get_objects()
+        if not objects:
+            self.statusBar().showMessage("Нет объектов для добавления", 3000)
+            return
+
+        self.statusBar().showMessage(f"Создание {len(objects)} типов и объектов...", 5000)
+
+        # Создаем типы и объекты последовательно
+        for obj_data in objects:
+            self._create_object_with_type(obj_data)
+
+    def _create_object_with_type(self, obj_data):
+        """Создает ElementType, затем Element"""
+
+        width = float(obj_data['width'])
+        length = float(obj_data['length'])
+        # Достаем margin (по умолчанию 0)
+        margin = float(obj_data.get('zone_margin', 0.0))
+
+        # 1. Создаем тип элемента на сервере
+        type_data = {
+            'title': obj_data['name'][:64],
+            'length': length,
+            'width': width,
+            # Общие габариты зоны = размер объекта + отступ с двух сторон
+            'zone_length': length + 2 * margin,
+            'zone_width': width + 2 * margin,
+            'description': obj_data.get('description', f"Custom {obj_data['name']}")
+        }
+
+        # Асинхронное создание типа
+        worker = AsyncWorker.run_async(upload_element_type(
+            title=type_data['title'],
+            length=type_data['length'],
+            width=type_data['width'],
+            zone_length=type_data['zone_length'],
+            zone_width=type_data['zone_width'],
+            description=type_data['description'],
+            token=session.token
+        ))
+
+        # ЗАЩИТА ОТ GC
+        if not hasattr(self, '_active_workers'):
+            self._active_workers = set()
+        self._active_workers.add(worker)
+
+        worker.signals.success.connect(
+            partial(self._on_type_created, obj_data=obj_data)
+        )
+        worker.signals.error.connect(
+            partial(self._on_type_create_error, obj_name=obj_data['name'])
+        )
+        worker.signals.finished.connect(
+            partial(self._cleanup_worker, worker=worker)
+        )
+
+    def _cleanup_worker(self, result_or_none, worker=None):
+        """Удаляет отработавший воркер из списка активных"""
+        if hasattr(self, '_active_workers') and worker in self._active_workers:
+            self._active_workers.remove(worker)
+
+    def _on_type_created(self, type_result, obj_data):
+        print(f"DEBUG: Ответ сервера: {type_result}")
+        element_type_id = type_result.get('id')
+
+        if not element_type_id:
+            return
+
+        margin = float(obj_data.get('zone_margin', 0.0))
+
+        # Добавляем в combobox шаблон с реальным type_id и зоной
+        template_data = {
+            'name': obj_data['name'],
+            'width': obj_data['width'],
+            'length': obj_data['length'],
+            'color': obj_data['color'],
+            'zone_margin': margin, # ⭐ Сохраняем зону для будущих добавлений
+            'element_type_id': element_type_id
+        }
+        self._add_template_to_combobox(template_data)
+
+        # Передаем margin локально
+        self._create_single_object(
+            element_type_id=element_type_id,
+            title=obj_data['name'],
+            width=obj_data['width'],
+            length=obj_data['length'],
+            color=obj_data['color'],
+            zone_margin=margin
+        )
+
+    def _on_type_create_error(self, error, obj_name):
+        """Обработка ошибки создания типа"""
+        print(f"DEBUG ERROR: Не удалось создать тип для {obj_name}: {error}")
+        QMessageBox.warning(self, "Ошибка",
+                            f"Не удалось создать тип '{obj_name}':\n{error}")
+
+    def _add_template_to_combobox(self, obj_data):
+        """Добавляет объект в combobox или обновляет существующий шаблон"""
+        name = obj_data.get('name', 'Объект')
+
+        # Проверяем, есть ли уже такой шаблон
+        for i in range(self.ui.comboBox.count()):
+            if self.ui.comboBox.itemText(i) == name:
+                # ⭐ Если имя совпало, обновляем данные (включая зону) и выходим
+                self.ui.comboBox.setItemData(i, obj_data)
+                return
+
+                # Если шаблона нет, добавляем новый
+        self.ui.comboBox.addItem(name, obj_data)
+
+    def _create_single_object(self, element_type_id, title, width, length, color, zone_margin=0.0):
+        center_pos = self.get_viewport_center_scene_pos()
+        import random
+        offset_x = random.randint(-5, 5)
+        offset_y = random.randint(-5, 5)
+
+        x_pos = int(center_pos.x() / PIXELS_PER_METER) + offset_x
+        y_pos = int(center_pos.y() / PIXELS_PER_METER) + offset_y
 
         worker = AsyncWorker.run_async(add_elements(
             project_id=self._current_project['id'],
             element_type_id=element_type_id,
-            x=int(x_pos), y=int(y_pos),
-            width=6, length=4,
-            title=selected_type,
-            color="#96C8FF",
+            x=x_pos,
+            y=y_pos,
+            width=int(width),
+            length=int(length),
+            title=title,
+            color=color,
             token=session.token
         ))
 
-        worker.signals.success.connect(self._on_object_created)
+        # ⭐ Используем partial, чтобы передать zone_margin в success callback
+        worker.signals.success.connect(
+            partial(self._on_object_created, zone_margin=zone_margin)
+        )
         worker.signals.error.connect(self._on_object_create_error)
 
-    def _on_object_created(self, element_data: dict):
-        """Добавляет созданный объект на сцену по центру видимой области"""
+    # ⭐ Добавили zone_margin с дефолтным значением
+    def _on_object_created(self, element_data: dict, zone_margin=0.0):
         if not element_data or 'id' not in element_data:
             QMessageBox.critical(self, "Ошибка", "Сервер вернул некорректные данные")
             return
@@ -641,20 +929,17 @@ class CanvasWindow(QMainWindow):
             height_m=float(element_data.get('length', 4.0)),
             color=element_data.get('color', '#96C8FF'),
             grid_size_m=0.5,
-            pixels_per_meter=PIXELS_PER_METER
+            pixels_per_meter=PIXELS_PER_METER,
+            zone_margin_m=zone_margin # ⭐ ПРИМЕНЯЕМ ЗОНУ!
         )
 
         obj._element_id = element_data['id']
         obj._element_type_id = element_data.get('element_type_id')
         obj._is_modified = False
 
-        # Только UI обновления при перемещении
         obj.geometryChanged.connect(lambda: self._on_object_moved_ui(obj))
 
-        # Центр видимой области (там, где пользователь смотрит)
         center_pos = self.get_viewport_center_scene_pos()
-
-        # Центрируем объект (учитываем его размер)
         obj_width_px = obj._width_m * PIXELS_PER_METER
         obj_height_px = obj._height_m * PIXELS_PER_METER
 
@@ -662,7 +947,6 @@ class CanvasWindow(QMainWindow):
         y_px = center_pos.y() - obj_height_px / 2
 
         obj.setPos(x_px, y_px)
-
         self.scene.addItem(obj)
         self._elements_map[element_data['id']] = obj
 
@@ -671,9 +955,7 @@ class CanvasWindow(QMainWindow):
         self.update_status_bar()
         self.scene.update()
 
-        self.statusBar().showMessage(f"Добавлен объект: {obj._text} (ID: {obj._element_id})", 3000)
-
-        # Сразу сохраняем позицию на сервере
+        self.statusBar().showMessage(f"Добавлен объект: {obj._text}", 3000)
         self._save_object_position(obj)
 
     def _on_object_create_error(self, error: Exception):
@@ -687,26 +969,6 @@ class CanvasWindow(QMainWindow):
         self.check_object_collisions()
         self.update_status_bar()
 
-    def update_status_bar(self):
-        area = self.get_workspace_area()
-        outside_names = []
-        overlapping_names = []
-
-        for item in self.scene.items():
-            if isinstance(item, SnappableObject):
-                if item._is_outside_area:
-                    outside_names.append(item._text)
-                if item._is_overlapping:
-                    overlapping_names.append(item._text)
-
-        messages = []
-        if outside_names:
-            messages.append("⚠️ Вне площадки: " + ", ".join(outside_names))
-        if overlapping_names:
-            messages.append("🟡 Пересекаются: " + ", ".join(overlapping_names))
-
-        self.status_label.setText(" | ".join(messages) if messages else "")
-
     def edit_object(self):
         selected = self.scene.selectedItems()
         if not selected:
@@ -716,12 +978,14 @@ class CanvasWindow(QMainWindow):
         if not isinstance(first_item, SnappableObject):
             return
 
+        # ⭐ Добавляем передачу initial_zone
         dlg = EditObjectWindow(
             self,
             initial_text=first_item._text,
             initial_length=first_item._width_m,
             initial_width=first_item._height_m,
-            initial_color=first_item._color.name()
+            initial_color=first_item._color.name(),
+            initial_zone=getattr(first_item, '_zone_margin_m', 0.0)
         )
 
         if dlg.exec() != EditObjectWindow.Accepted:
@@ -731,8 +995,7 @@ class CanvasWindow(QMainWindow):
         if not changes:
             return
 
-        # ⭐ Собираем все изменения в очередь, но НЕ запускаем сразу
-        save_queue = []  # [(save_func, args), ...]
+        save_queue = []
 
         modified_count = 0
         for item in selected:
@@ -740,10 +1003,8 @@ class CanvasWindow(QMainWindow):
                 continue
 
             element_id = getattr(item, '_element_id', None)
-            if not element_id or element_id not in self._elements_map:
-                continue
 
-            # Применяем изменения локально
+            # --- ВАШ ТЕКУЩИЙ КОД ---
             if "text" in changes:
                 item.update_text(changes["text"])
                 item._is_modified = True
@@ -757,15 +1018,20 @@ class CanvasWindow(QMainWindow):
                 item._height_m = changes["width"]
                 item._is_modified = True
 
+            if "color" in changes:
+                item.update_color(changes["color"])  # Обновляем цвет локально
+                item._is_modified = True
+                save_queue.append(('recolor', element_id, changes["color"]))
+
+            # ⭐ Добавляем обработку изменения зоны
+            if "zone_margin" in changes:
+                item.update_zone_margin(changes["zone_margin"])
+                item._is_modified = True
+
             if "length" in changes or "width" in changes:
                 item.prepareGeometryChange()
                 item.update()
                 save_queue.append(('resize', element_id, int(item._width_m), int(item._height_m)))
-
-            if "color" in changes:
-                item.update_color(changes["color"])
-                item._is_modified = True
-                save_queue.append(('recolor', element_id, changes["color"]))
 
             self.check_object_bounds(item)
             modified_count += 1
@@ -913,28 +1179,37 @@ class CanvasWindow(QMainWindow):
             QMessageBox.information(self, "Успех", f"Сохранено: {', '.join(success_messages)}")
 
     def _save_area_to_server(self) -> tuple:
-        """Сохраняет размеры площадки. Возвращает (success: bool, error: bool)"""
+        """Сохраняет размеры площадки через resize_project. Возвращает (success: bool, error: bool)"""
         try:
             area = self.get_workspace_area()
             if not area:
-                return (False, False)  # Нет площадки для сохранения
+                return (False, False)
 
             width_m = int(area._width_m)
             height_m = int(area._height_m)
 
-            # Используем AsyncWorker вместо синхронного вызова
+            # Используем resize_project вместо rename_project
+            worker = AsyncWorker.run_async(
+                resize_project(
+                    project_id=self._current_project['id'],
+                    width=width_m,
+                    length=height_m,
+                    token=session.token
+                )
+            )
+
+            # Синхронное ожидание для совместимости с текущей логикой
             import asyncio
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-
-            result = loop.run_until_complete(rename_project(
-                project_id=self._current_project['id'],
-                name=self._current_project.get('name', 'Без названия'),
-                description=self._current_project.get('description', ''),
-                width=width_m,
-                length=height_m,
-                token=session.token
-            ))
+            result = loop.run_until_complete(
+                resize_project(
+                    project_id=self._current_project['id'],
+                    width=width_m,
+                    length=height_m,
+                    token=session.token
+                )
+            )
             loop.close()
 
             # Обновляем локальные данные

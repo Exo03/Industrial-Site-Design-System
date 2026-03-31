@@ -7,8 +7,10 @@ from UI_Files.EditObjectWindow import Ui_Object_edit
 from ...core.theme_manager import theme_manager
 
 class EditObjectWindow(ThemedDialog):
+    # ⭐ Обновленная сигнатура (добавлены initial_zone и is_creation)
     def __init__(self, parent=None, initial_text="", initial_length=120,
-                 initial_width=80, initial_color="#96C8FF"):
+                 initial_width=80, initial_color="#96C8FF", initial_zone=0.0, is_creation=False):
+        # ОЧЕНЬ ВАЖНО: передаем в базовый класс только parent
         super().__init__(parent)
         self.ui = Ui_Object_edit()
         self.ui.setupUi(self)
@@ -17,27 +19,34 @@ class EditObjectWindow(ThemedDialog):
         self._initial_length = initial_length
         self._initial_width = initial_width
         self._initial_color = initial_color
+        self._initial_zone = initial_zone # ⭐ Сохраняем начальную зону
 
         self.ui.textLineEdit.setText(initial_text)
         self.ui.lengthLineEdit.setText(str(initial_length))
         self.ui.widthLineEdit.setText(str(initial_width))
+        self.ui.zoneLineEdit.setText(str(initial_zone)) # ⭐ Заполняем поле
         self.ui.colorDisplay.setText(initial_color)
         self.update_color_display(initial_color)
 
         self.ui.colorChooseButton.clicked.connect(self.open_color_dialog)
 
-        double_validator = QDoubleValidator(0.1, 9999.99, 2)
+        # Настройка валидатора для чисел
+        double_validator = QDoubleValidator(0.0, 9999.99, 2)
         double_validator.setNotation(QDoubleValidator.StandardNotation)
         double_validator.setLocale(QLocale(QLocale.English))
 
         self.ui.lengthLineEdit.setValidator(double_validator)
         self.ui.widthLineEdit.setValidator(double_validator)
+        self.ui.zoneLineEdit.setValidator(double_validator) # ⭐ Валидатор для зоны
+
+        # ⭐ Если мы РЕДАКТИРУЕМ старый объект на сцене, блокируем поле зоны
+        if not is_creation:
+            self.ui.zoneLineEdit.setReadOnly(True)
+            self.ui.zoneLineEdit.setToolTip("Зону обслуживания можно задать только при создании")
 
     def open_color_dialog(self):
         current_color = QColor(self.ui.colorDisplay.text().strip() or "#96C8FF")
         dialog = QColorDialog(current_color, self)
-
-        # Стили для диалога цвета
 
         is_dark = theme_manager.is_dark()
         bg = "#1E1E1E" if is_dark else "#F5F5F5"
@@ -94,6 +103,16 @@ class EditObjectWindow(ThemedDialog):
             width = float(self.ui.widthLineEdit.text())
             if width > 0 and abs(width - self._initial_width) > 1e-6:
                 data["width"] = width
+        except ValueError:
+            pass
+
+        # ⭐ Добавляем считывание зоны обслуживания (с защитой от запятых)
+        try:
+            zone_text = self.ui.zoneLineEdit.text().strip().replace(',', '.')
+            if zone_text:
+                zone = float(zone_text)
+                if zone >= 0 and abs(zone - self._initial_zone) > 1e-6:
+                    data["zone_margin"] = zone
         except ValueError:
             pass
 
