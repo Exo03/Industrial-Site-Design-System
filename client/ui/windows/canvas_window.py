@@ -251,6 +251,9 @@ class CanvasWindow(QMainWindow):
         self.ui.actionSetArea.setIcon(
             QIcon(get_resource_path(f"Icons/activity_zone_24dp_{suffix}.svg"))
         )
+        self.ui.actionAddObjectsList.setIcon(
+            QIcon(get_resource_path(f"Icons/library_add_24dp_{suffix}.svg"))
+        )
 
     def save_project_png(self):
         file_path, _ = QFileDialog.getSaveFileName(
