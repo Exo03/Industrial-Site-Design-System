@@ -10,22 +10,19 @@ from client.utils.paths import get_resource_path
 class ObjectRowWidget(QWidget):
     """Одна строка объекта с полными данными"""
 
-    def __init__(self, name="Объект", width=6.0, length=4.0, color="#96C8FF", parent=None):
+    def __init__(self, name="Объект", width=6.0, length=4.0, color="#96C8FF", zone_margin=0.0, parent=None):
         super().__init__(parent)
         self.ui = Ui_ObjectRow()
         self.ui.setupUi(self)
 
-        # Храним все свойства объекта
         self._width = width
         self._length = length
         self._color = color
+        self._zone_margin = zone_margin # ⭐ Храним зону
 
         self.set_name(name)
-
-        # Подключаем кнопки
         self.ui.deleteButton.clicked.connect(self.delete_row)
-        self.ui.editButton.clicked.connect(self.edit_object)  # Теперь открывает полный диалог
-
+        self.ui.editButton.clicked.connect(self.edit_object)
         self.update_icons_for_theme(theme_manager.current_theme)
 
     def update_icons_for_theme(self, theme: str):
@@ -57,13 +54,14 @@ class ObjectRowWidget(QWidget):
             initial_text=self.get_name(),
             initial_length=self._length,
             initial_width=self._width,
-            initial_color=self._color
+            initial_color=self._color,
+            initial_zone=self._zone_margin, # ⭐ Передаем текущую зону
+            is_creation=True # ⭐ Разрешаем редактировать зону!
         )
 
         if dialog.exec() == QDialog.Accepted:
             changes = dialog.get_data()
 
-            # Применяем изменения к свойствам строки
             if "text" in changes:
                 self.set_name(changes["text"])
             if "length" in changes:
@@ -72,6 +70,8 @@ class ObjectRowWidget(QWidget):
                 self._width = changes["width"]
             if "color" in changes:
                 self._color = changes["color"]
+            if "zone_margin" in changes: # ⭐ Сохраняем новую зону
+                self._zone_margin = changes["zone_margin"]
 
 
 class AddObjectDialog(QDialog):
@@ -169,7 +169,8 @@ class AddObjectDialog(QDialog):
                         "name": widget.get_name(),
                         "width": widget._width,
                         "length": widget._length,
-                        "color": widget._color
+                        "color": widget._color,
+                        "zone_margin": widget._zone_margin # ⭐ ПЕРЕДАЕМ ЗОНУ!
                     }
                     objects.append(obj_data)
         return objects

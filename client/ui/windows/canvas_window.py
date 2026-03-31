@@ -732,36 +732,42 @@ class CanvasWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", "Сначала добавьте объекты через диалог (+)")
             return
 
-        # Получаем данные из combobox (сохраненные как userData)
         obj_data = self.ui.comboBox.currentData()
         if not obj_data:
-            QMessageBox.warning(self, "Ошибка", "Нет данных об объекте")
             return
 
         self.statusBar().showMessage("Создание объекта...", 3000)
 
-        # Центр видимой области
         center_pos = self.get_viewport_center_scene_pos()
         x_pos = int(center_pos.x() / PIXELS_PER_METER)
         y_pos = int(center_pos.y() / PIXELS_PER_METER)
 
+        # ⭐ Используем ID типа из данных объекта, а не жесткую единицу
+        type_id = obj_data.get('element_type_id', 1)
+
         worker = AsyncWorker.run_async(add_elements(
             project_id=self._current_project['id'],
-            element_type_id=1,  # Дефолтный тип или None, если API позволяет
+            element_type_id=type_id,
             x=x_pos,
             y=y_pos,
-            width=int(obj_data['width']),
-            length=int(obj_data['length']),
+            width=float(obj_data['width']), # Используем float для точности
+            length=float(obj_data['length']),
             title=obj_data['name'],
             color=obj_data['color'],
             token=session.token
         ))
+
+        # ⭐ ЗАЩИТА ОТ GC: Обязательно добавляем в активные воркеры
+        if not hasattr(self, '_active_workers'):
+            self._active_workers = set()
+        self._active_workers.add(worker)
 
         zone = float(obj_data.get('zone_margin', 0.0))
         worker.signals.success.connect(
             partial(self._on_object_created, zone_margin=zone)
         )
         worker.signals.error.connect(self._on_object_create_error)
+        worker.signals.finished.connect(partial(self._cleanup_worker, worker=worker))
 
     def add_objects_list(self):
         """Открывает диалог добавления нескольких объектов"""
@@ -871,15 +877,17 @@ class CanvasWindow(QMainWindow):
                             f"Не удалось создать тип '{obj_name}':\n{error}")
 
     def _add_template_to_combobox(self, obj_data):
-        """Добавляет объект в combobox как шаблон, если такого еще нет"""
+        """Добавляет объект в combobox или обновляет существующий шаблон"""
         name = obj_data.get('name', 'Объект')
+
         # Проверяем, есть ли уже такой шаблон
         for i in range(self.ui.comboBox.count()):
-            existing_data = self.ui.comboBox.itemData(i)
-            if existing_data and existing_data.get('name') == name:
-                return  # Уже есть
+            if self.ui.comboBox.itemText(i) == name:
+                # ⭐ Если имя совпало, обновляем данные (включая зону) и выходим
+                self.ui.comboBox.setItemData(i, obj_data)
+                return
 
-        # Добавляем новый шаблон
+                # Если шаблона нет, добавляем новый
         self.ui.comboBox.addItem(name, obj_data)
 
     def _create_single_object(self, element_type_id, title, width, length, color, zone_margin=0.0):
