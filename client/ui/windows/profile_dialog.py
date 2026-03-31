@@ -22,6 +22,7 @@ class ProfileDialog(ThemedDialog):
 
         self.ui.logoutButton.clicked.connect(self._logout)
         self.ui.deleteButton.clicked.connect(self._delete_account)
+        self.ui.exitButton.clicked.connect(self.close)
 
         self.update_icons_for_theme(theme_manager.current_theme)
 

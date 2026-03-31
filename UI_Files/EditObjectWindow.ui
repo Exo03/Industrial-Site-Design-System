@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>240</width>
-    <height>309</height>
+    <width>299</width>
+    <height>372</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -98,7 +98,7 @@
      <item>
       <widget class="QLabel" name="TextLabel">
        <property name="text">
-        <string>Текст:  </string>
+        <string>Название объекта:  </string>
        </property>
       </widget>
      </item>
@@ -124,6 +124,16 @@
      </item>
      <item>
       <widget class="QLineEdit" name="widthLineEdit"/>
+     </item>
+     <item>
+      <widget class="QLabel" name="zoneLabel">
+       <property name="text">
+        <string>Размер зоны обслуживания:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="zoneLineEdit"/>
      </item>
      <item>
       <widget class="QLabel" name="ColorLabel">

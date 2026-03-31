@@ -5,5 +5,9 @@ class ElementType(Base):
     __tablename__ = "element_types"
 
     id = Column(Integer, primary_key=True, index=True)
+    length = Column(Integer)
+    width = Column(Integer)
+    zone_length = Column(Integer)
+    zone_width = Column(Integer)
     title = Column(String)
     description = Column(String)

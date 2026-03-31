@@ -34,6 +34,12 @@ class Ui_MainWindow(object):
         self.actionSavePNG.setObjectName(u"actionSavePNG")
         self.actionSaveJSON = QAction(MainWindow)
         self.actionSaveJSON.setObjectName(u"actionSaveJSON")
+        self.actionAddObjectsList = QAction(MainWindow)
+        self.actionAddObjectsList.setObjectName(u"actionAddObjectsList")
+        icon4 = QIcon()
+        icon4.addFile(u"./Icons/library_add_24dp_FFFFFF.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionAddObjectsList.setIcon(icon4)
+        self.actionAddObjectsList.setMenuRole(QAction.NoRole)
         self.action_6 = QAction(MainWindow)
         self.action_6.setObjectName(u"action_6")
         self.action_7 = QAction(MainWindow)
@@ -72,6 +78,7 @@ class Ui_MainWindow(object):
         icon3.addFile(u"./Icons/activity_zone_24dp_FFFFFF.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionSetArea.setIcon(icon3)
         self.actionSetArea.setMenuRole(QAction.NoRole)
+
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.graphicsView = QGraphicsView(self.centralwidget)
@@ -119,6 +126,7 @@ class Ui_MainWindow(object):
         self.toolBar.addAction(self.actionEditObject)
         self.toolBar.addAction(self.actionSetArea)
         self.toolBar.addAction(self.actionDeleteObject)
+        self.toolBar.addAction(self.actionAddObjectsList)
 
 
         self.equipmentContainer = QWidget(self.toolBar)
