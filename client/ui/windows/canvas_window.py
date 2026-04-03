@@ -74,9 +74,6 @@ class CanvasWindow(QMainWindow):
         self.ui.actionSavePNG.triggered.connect(self.save_project_png)
         self.ui.actionSaveJSON.triggered.connect(self.save_project_json)
 
-        self.ui.actionSaveToServer = self.ui.toolBar.addAction("💾 Сохранить")
-        self.ui.actionSaveToServer.triggered.connect(self._save_to_server)
-
         self.ui.action_10.triggered.connect(lambda: self.change_theme('light'))
         self.ui.action_11.triggered.connect(lambda: self.change_theme('dark'))
         self.ui.action_12.triggered.connect(lambda: self.change_theme('system'))
@@ -170,7 +167,6 @@ class CanvasWindow(QMainWindow):
 
         # Создаём объекты
         for elem_data in elements:
-            # ⭐ Ищем сохраненную зону в типах оборудования
             type_id = elem_data.get('element_type_id')
             margin = 0.0
             if type_id:
@@ -182,14 +178,25 @@ class CanvasWindow(QMainWindow):
                             margin = (z_w - w) / 2
                         break
 
+            # ⭐ ВОССТАНАВЛИВАЕМ ШАБЛОН В COMBOBOX (возвращает цвета и размеры!)
+            template_data = {
+                'name': elem_data.get('title', 'Объект'),
+                'width': float(elem_data.get('width', 6.0)),
+                'length': float(elem_data.get('length', 4.0)),
+                'color': elem_data.get('color', '#96C8FF'),
+                'zone_margin': margin,
+                'element_type_id': type_id
+            }
+            self._add_template_to_combobox(template_data)
+
             obj = SnappableObject(
                 text=elem_data.get('title', 'Объект'),
-                width_m=elem_data.get('width', 6.0),
-                height_m=elem_data.get('length', 4.0),
+                width_m=float(elem_data.get('width', 6.0)), # Обязательно float!
+                height_m=float(elem_data.get('length', 4.0)),
                 color=elem_data.get('color', '#96C8FF'),
                 grid_size_m=0.5,
                 pixels_per_meter=PIXELS_PER_METER,
-                zone_margin_m=margin  # ⭐ ТЕПЕРЬ ЗОНА НЕ БУДЕТ СБРАСЫВАТЬСЯ В 0
+                zone_margin_m=margin
             )
 
             obj._element_id = elem_data['id']
@@ -718,11 +725,45 @@ class CanvasWindow(QMainWindow):
         self.status_label.setText(" | ".join(messages) if messages else "")
 
     def _on_object_moved_ui(self, obj: SnappableObject):
-        """Только UI обновления при перемещении, без отправки на сервер"""
+        """Обновления UI при перемещении и отложенное сохранение (Debounce)"""
         obj._is_modified = True  # Помечаем как изменённый
         self.check_object_bounds(obj)
         self.check_object_collisions()
         self.update_status_bar()
+
+        # Если у объекта еще нет ID (он не сохранен на сервере), пропускаем
+        if not hasattr(obj, '_element_id') or not obj._element_id:
+            return
+
+        element_id = obj._element_id
+
+        # Создаем словарь таймеров, если его еще нет
+        if not hasattr(self, '_save_timers'):
+            self._save_timers = {}
+
+        # Если таймер для этого объекта уже запущен — останавливаем его
+        if element_id in self._save_timers:
+            self._save_timers[element_id].stop()
+        else:
+            # Если таймера нет, создаем новый
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(partial(self._execute_save_position, obj, element_id))
+            self._save_timers[element_id] = timer
+
+        # Запускаем таймер заново. Если вы будете непрерывно двигать мышь,
+        # таймер будет постоянно сбрасываться и запрос не уйдет.
+        # Как только вы остановитесь на 500 мс, таймер сработает и сохранит позицию.
+        self._save_timers[element_id].start(MOVE_DEBOUNCE_MS)
+
+    def _execute_save_position(self, obj, element_id):
+        """Вызывается по истечении таймера Debounce для сохранения"""
+        # Удаляем отработавший таймер
+        if element_id in self._save_timers:
+            del self._save_timers[element_id]
+
+        # Запускаем ваш готовый метод сохранения на сервер!
+        self._save_object_position(obj)
 
     def add_object(self):
         """Добавляет выбранный из combobox объект на сцену"""
@@ -1057,43 +1098,32 @@ class CanvasWindow(QMainWindow):
             self.statusBar().showMessage("Все изменения сохранены", 3000)
             return
 
-        # Берём первое задание
         save_task = self._pending_save_queue.pop(0)
         save_type, element_id, *args = save_task
 
         print(f"DEBUG: Processing {save_type} for element {element_id}")
 
-        # Создаём worker
         if save_type == 'rename':
-            text = args[0]
-            worker = AsyncWorker.run_async(
-                rename_element(element_id, text, session.token)
-            )
+            worker = AsyncWorker.run_async(rename_element(element_id, args[0], session.token))
         elif save_type == 'recolor':
-            color = args[0]
-            worker = AsyncWorker.run_async(
-                recolor_element(element_id, color, session.token)
-            )
+            worker = AsyncWorker.run_async(recolor_element(element_id, args[0], session.token))
         elif save_type == 'resize':
-            width, length = args
-            worker = AsyncWorker.run_async(
-                resize_element(element_id, width, length, session.token)
-            )
+            worker = AsyncWorker.run_async(resize_element(element_id, args[0], args[1], session.token))
         else:
-            # Неизвестный тип — пропускаем
             self._process_save_queue()
             return
 
-        # Подключаем callback'и с явным захватом
-        # ⭐ Используем functools.partial вместо lambda для надёжности
-        from functools import partial
+        # ⭐ ЗАЩИТА ОТ GC (Сборщика мусора)
+        if not hasattr(self, '_active_workers'):
+            self._active_workers = set()
+        self._active_workers.add(worker)
 
-        worker.signals.success.connect(
-            partial(self._on_save_success, save_type, element_id)
-        )
-        worker.signals.error.connect(
-            partial(self._on_save_error, save_type, element_id)
-        )
+        from functools import partial
+        worker.signals.success.connect(partial(self._on_save_success, save_type, element_id))
+        worker.signals.error.connect(partial(self._on_save_error, save_type, element_id))
+
+        # Обязательно удаляем воркер после завершения
+        worker.signals.finished.connect(partial(self._cleanup_worker, worker=worker))
 
     def _on_save_success(self, save_type, element_id, result=None):
         """Callback успешного сохранения"""
@@ -1113,19 +1143,33 @@ class CanvasWindow(QMainWindow):
         for item in selected:
             if isinstance(item, SnappableObject):
                 element_id = getattr(item, '_element_id', None)
-
                 self._remove_from_scene(item)
 
                 if element_id and session.token:
-                    worker = AsyncWorker.run_async(
-                        delete_element(element_id, session.token)
-                    )
+                    worker = AsyncWorker.run_async(delete_element(element_id, session.token))
+
+                    # ⭐ ЗАЩИТА ОТ GC
+                    if not hasattr(self, '_active_workers'):
+                        self._active_workers = set()
+                    self._active_workers.add(worker)
+
                     worker.signals.error.connect(self._on_delete_error)
+
+                    from functools import partial
+                    worker.signals.finished.connect(partial(self._cleanup_worker, worker=worker))
 
     def _remove_from_scene(self, item):
         self.scene.removeItem(item)
-        if hasattr(item, '_element_id') and item._element_id in self._elements_map:
-            del self._elements_map[item._element_id]
+        if hasattr(item, '_element_id'):
+            element_id = item._element_id
+            if element_id in self._elements_map:
+                del self._elements_map[element_id]
+
+            # ⭐ Отменяем автосохранение, если объект был удален
+            if hasattr(self, '_save_timers') and element_id in self._save_timers:
+                self._save_timers[element_id].stop()
+                del self._save_timers[element_id]
+
         self.update_status_bar()
 
     def _on_delete_error(self, error: Exception):
@@ -1308,7 +1352,14 @@ class CanvasWindow(QMainWindow):
         x_m = int(obj.pos().x() / PIXELS_PER_METER)
         y_m = int(obj.pos().y() / PIXELS_PER_METER)
 
-        worker = AsyncWorker.run_async(
-            move_element(obj._element_id, x_m, y_m, session.token)
-        )
+        worker = AsyncWorker.run_async(move_element(obj._element_id, x_m, y_m, session.token))
+
+        # ⭐ ЗАЩИТА ОТ GC
+        if not hasattr(self, '_active_workers'):
+            self._active_workers = set()
+        self._active_workers.add(worker)
+
         worker.signals.error.connect(lambda e: print(f"Ошибка сохранения позиции: {e}"))
+
+        from functools import partial
+        worker.signals.finished.connect(partial(self._cleanup_worker, worker=worker))
