@@ -37,17 +37,15 @@ async def get_element_types() -> list:
     except (httpx.ConnectTimeout, httpx.RequestError):
         raise ValueError("Сервер недоступен. Проверьте подключение")
 
-async def upload_element_type(title, length, width, zone_length, zone_width,
-                              description, token):
+async def upload_element_type(title,zone_length, zone_width,description,vertices, token):
     try:
         async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=15.0) as client:
             data = {
                 'title': title,
-                'length': float(length),
-                'width': float(width),
                 'zone_length': float(zone_length),
                 'zone_width': float(zone_width),
-                'description': description
+                'description': description,
+                'vertices': vertices
             }
             response = await client.post(
                 "/api/v1/upload_element_type",

@@ -1,7 +1,7 @@
 import httpx
 from client.config.settings import API_BASE_URL
 
-async def add_elements(project_id: int, element_type_id: int, x: int, y: int,title:str, color:str, token:str, vertices: tuple) -> dict:
+async def add_elements(project_id: int, element_type_id: int, x: int, y: int,title:str, color:str, token:str) -> dict:
     try:
         async with httpx.AsyncClient(base_url = API_BASE_URL,  timeout = 15.0) as client:
             response = await client.post(
@@ -12,8 +12,7 @@ async def add_elements(project_id: int, element_type_id: int, x: int, y: int,tit
                     "x" : x,
                     "y" : y,
                     "title": title,
-                    "color": color,
-                    "vertices": vertices
+                    "color": color
                 },
                 headers = {"Authorization": f"Bearer {token}"}#добавлено с помощью ии
             )
