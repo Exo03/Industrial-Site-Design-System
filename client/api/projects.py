@@ -1,7 +1,7 @@
 import httpx
 from client.config.settings import API_BASE_URL
 
-async def create_project(name: str, description: str, width: int, length: int, token: str) -> dict:
+async def create_project(name: str, description: str, vertices: tuple, token: str) -> dict:
     try:
         async with httpx.AsyncClient(base_url = API_BASE_URL,  timeout = 15.0) as client:
             response = await client.post(
@@ -9,8 +9,7 @@ async def create_project(name: str, description: str, width: int, length: int, t
                 json={
                     "name": name,
                     "description": description,
-                    "width": width,
-                    "length": length,
+                    "vertices": vertices
                 },
                 headers = {"Authorization": f"Bearer {token}"}
             )
@@ -64,7 +63,7 @@ async def delete_project(project_id: int, token: str) -> bool:
         raise ValueError("Сервер недоступен. Проверьте подключение")
 
 
-async def rename_project(project_id: int, name: str,description: str, width: int, length: int, token: str) -> dict:
+async def rename_project(project_id: int, name: str,description: str,token: str) -> dict:
     try:
         async with httpx.AsyncClient(base_url = API_BASE_URL,  timeout = 15.0) as client:
             response = await client.put(
@@ -72,8 +71,6 @@ async def rename_project(project_id: int, name: str,description: str, width: int
                 json = {
                     "name": name,
                     "description": description,
-                    "width": width,
-                    "length": length
                     },
                 headers={"Authorization": f"Bearer {token}"},
             )
@@ -110,15 +107,14 @@ async def get_project(project_id: int, token: str) -> dict:
     except (httpx.ConnectTimeout, httpx.RequestError):
         raise ValueError("Сервер недоступен. Проверьте подключение")
 
-async def resize_project(project_id: int, width: int, length: int, token: str) -> dict:
+async def resize_project(project_id: int, vertices: tuple, token: str) -> dict:
     try:
         async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=15.0) as client:
             response = await client.put(
                 "/api/v1/resize_project",
                 json={
                     "id": project_id,
-                    "width": width,
-                    "length": length
+                    "vertices": vertices
                 },
                 headers={"Authorization": f"Bearer {token}"}
             )
