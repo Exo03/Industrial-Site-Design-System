@@ -21,8 +21,7 @@ async def create_project(
         name=project.name,
         description=project.description,
         owner_id=current_user.id,
-        width=project.width,
-        length=project.length
+        vertices=project.vertices
     )
     
     db.add(new_project)
@@ -168,8 +167,7 @@ async def resize_project(
     if not member and project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    project.length = new_size.length
-    project.width = new_size.width
+    project.vertices = new_size.vertices
 
     await db.commit()
     await db.refresh(project)

@@ -50,11 +50,11 @@ async def upload(
 ):
     new_type = ElementType(
         title = type.title,
-        length = type.length,
-        width = type.width,
         zone_length = type.zone_length,
         zone_width = type.zone_width,
-        description = type.description
+        description = type.description,
+        owner_id = user.id,
+        vertices = type.vertices
     )
 
     db.add(new_type)
@@ -67,6 +67,7 @@ async def upload(
 async def get_element_types(
     db: AsyncSession = Depends(get_db)
 ):
-    element_types = (await db.execute(select(ElementType))).scalars().all()
+    result = await db.execute(select(ElementType))
+    element_types = result.scalars().all()
 
     return element_types
