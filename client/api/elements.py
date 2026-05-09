@@ -13,7 +13,7 @@ async def add_elements(project_id: int, element_type_id: int, x: int, y: int,tit
                     "y" : y,
                     "title": title,
                     "color": color,
-                    "vertices": vertices,
+                    "vertices": vertices
                 },
                 headers = {"Authorization": f"Bearer {token}"}#добавлено с помощью ии
             )
