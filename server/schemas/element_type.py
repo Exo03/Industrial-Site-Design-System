@@ -1,18 +1,19 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class ElementTypeResponse(BaseModel):
     id: int
     title: str
-    length: int
-    width: int
     zone_length: int
     zone_width: int
-    description: str
+    description: Optional[str]
+    owner_id: int
+    vertices: tuple
 
 class ElementTypeCreate(BaseModel):
     title: str
-    length: int
-    width: int
     zone_length: int
     zone_width: int
-    description: str
+    description: Optional[str]
+    owner_id: int
+    vertices: tuple

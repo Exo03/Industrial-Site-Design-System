@@ -24,7 +24,7 @@ create table element_types (
     zone_length int not null,
     title varchar(64) not null ,
     description varchar(64) ,
-    type_category int
+    owner_id int references users(id) 
 ) ;
 
 create table elements (
