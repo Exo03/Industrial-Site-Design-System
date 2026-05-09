@@ -1,7 +1,7 @@
 import httpx
 from client.config.settings import API_BASE_URL
 
-async def add_elements(project_id: int, element_type_id: int, x: int, y: int,title:str, color:str, token:str) -> dict:
+async def add_elements(project_id: int, element_type_id: int, x: int, y: int,title:str, color:str, token:str, vertices: tuple) -> dict:
     try:
         async with httpx.AsyncClient(base_url = API_BASE_URL,  timeout = 15.0) as client:
             response = await client.post(
@@ -12,7 +12,8 @@ async def add_elements(project_id: int, element_type_id: int, x: int, y: int,tit
                     "x" : x,
                     "y" : y,
                     "title": title,
-                    "color": color
+                    "color": color,
+                    "vertices": vertices
                 },
                 headers = {"Authorization": f"Bearer {token}"}#добавлено с помощью ии
             )
@@ -98,15 +99,14 @@ async def move_element(id:int, x: int, y: int, token: str) -> dict:
     except (httpx.ConnectTimeout, httpx.RequestError):
         raise ValueError("Сервер недоступен. Проверьте подключение")
 
-async def resize_element(id:int, width: int, length: int, token: str) -> dict:
+async def resize_element(id:int, vertices:tuple, token: str) -> dict:
     try:
         async with httpx.AsyncClient(base_url=API_BASE_URL,  timeout = 15.0) as client:
             response = await client.put(
                 f"/api/v1/resize_element",
                 json = {
                     "id": id,
-                    "width": width,
-                    "length": length,
+                    "vertices": vertices
                 },
                 headers={"Authorization": f"Bearer {token}"}
             )
