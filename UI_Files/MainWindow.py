@@ -18,7 +18,7 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QGraphicsView, QMainWindow, QMenu,
                                QMenuBar, QSizePolicy, QStatusBar, QToolBar,
-                               QWidget, QComboBox, QLabel, QHBoxLayout)
+                               QWidget, QComboBox, QLabel, QHBoxLayout, QPushButton)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -148,6 +148,18 @@ class Ui_MainWindow(object):
         layout.addWidget(self.comboBox)
 
         self.toolBar.addWidget(self.equipmentContainer)
+
+        self.deleteTemplateButton = QPushButton(self.equipmentContainer)
+        self.deleteTemplateButton.setObjectName(u"deleteTemplateButton")
+        self.deleteTemplateButton.setToolTip("Удалить объект из списка")
+        self.deleteTemplateButton.setFixedSize(32, 32)  # Делаем её аккуратной и квадратной
+        self.deleteTemplateButton.setStyleSheet("border: none; border-radius: 4px;")  # Убираем лишние рамки
+
+        self.equipmentContainer.setFixedHeight(32)
+
+        layout.addWidget(self.labelEquipment)
+        layout.addWidget(self.comboBox)
+        layout.addWidget(self.deleteTemplateButton)
 
         self.retranslateUi(MainWindow)
 

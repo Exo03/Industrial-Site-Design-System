@@ -27,6 +27,7 @@ from .profile_dialog import ProfileDialog
 from .auth_dialog import AuthDialog
 from ...core.theme_manager import theme_manager
 from ...api.elements import rename_element
+from ..widgets.graphics.zoomable_view import ZoomableGraphicsView
 
 import sys
 import os
@@ -64,8 +65,11 @@ class CanvasWindow(QMainWindow):
         self.ui.graphicsView = self.graphicsView
 
         self.ui.graphicsView.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.graphicsView.polygonDrawn.connect(self._on_custom_polygon_drawn)
 
-        self.ui.actionAddObject.triggered.connect(self.add_object)
+        self._drawing_mode = "object"
+
+        self.ui.actionAddObject.triggered.connect(self.add_object_entry)
         self.ui.actionEditObject.triggered.connect(self.edit_object)
         self.ui.actionDeleteObject.triggered.connect(self.delete_object)
         self.ui.actionSetArea.triggered.connect(self.set_area)
@@ -73,6 +77,7 @@ class CanvasWindow(QMainWindow):
         self.ui.action_8.triggered.connect(self.open_auth_dialog)
         self.ui.actionSavePNG.triggered.connect(self.save_project_png)
         self.ui.actionSaveJSON.triggered.connect(self.save_project_json)
+        self.ui.deleteTemplateButton.clicked.connect(self.delete_template_from_list)
 
         self.ui.action_10.triggered.connect(lambda: self.change_theme('light'))
         self.ui.action_11.triggered.connect(lambda: self.change_theme('dark'))
@@ -86,6 +91,77 @@ class CanvasWindow(QMainWindow):
 
         if project_data:
             self._load_project(project_data)
+
+    def delete_template_from_list(self):
+        """Удаляет выбранный шаблон (тип объекта) из выпадающего списка"""
+        index = self.ui.comboBox.currentIndex()
+        if index < 0:
+            QMessageBox.warning(self, "Внимание", "Нет объектов для удаления")
+            return
+
+        # Получаем данные выбранного шаблона
+        obj_data = self.ui.comboBox.currentData()
+        if not obj_data:
+            return
+
+        template_name = obj_data.get('name', 'Неизвестный объект')
+        type_id = obj_data.get('element_type_id')
+
+        # Спрашиваем подтверждение
+        reply = QMessageBox.question(
+            self,
+            "Удаление объекта",
+            f"Удалить '{template_name}' из выпадающего списка?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            # 1. Удаляем локально из UI
+            self.ui.comboBox.removeItem(index)
+            self.statusBar().showMessage(f"Объект '{template_name}' удален из списка", 3000)
+
+            # 2. Если у вас уже есть эндпоинт на сервере для удаления типов — вызываем его
+            if type_id and session.token:
+                try:
+                    from ...api.element_types import delete_element_type
+                    worker = AsyncWorker.run_async(delete_element_type(type_id, session.token))
+
+                    if not hasattr(self, '_active_workers'):
+                        self._active_workers = set()
+                    self._active_workers.add(worker)
+
+                    worker.signals.error.connect(
+                        lambda e: QMessageBox.warning(self, "Ошибка API", f"Не удалось удалить шаблон на сервере:\n{e}")
+                    )
+                    from functools import partial
+                    worker.signals.finished.connect(partial(self._cleanup_worker, worker=worker))
+                except ImportError:
+                    print("API для удаления типа (delete_element_type) еще не реализовано напарником.")
+
+    def add_object_entry(self):
+        """Выбор способа добавления объекта: рисование или список"""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Добавление объекта")
+        msg.setText("Как вы хотите добавить объект на площадку?")
+
+        # Создаем кастомные кнопки
+        btn_draw = msg.addButton("Нарисовать полигон", QMessageBox.ButtonRole.ActionRole)
+        btn_list = msg.addButton("Добавить из списка", QMessageBox.ButtonRole.ActionRole)
+        msg.addButton("Отмена", QMessageBox.ButtonRole.RejectRole)
+
+        msg.exec()
+
+        if msg.clickedButton() == btn_draw:
+            # Включаем режим рисования объекта (используем твою обертку)
+            self._start_drawing_object()
+
+        elif msg.clickedButton() == btn_list:
+            # Открываем твой существующий диалог со списком
+            self.add_object()
+
+    def _start_drawing_object(self):
+        self._drawing_mode = "object"
+        self.graphicsView.start_drawing()
 
     def _load_element_types(self):
         self.ui.comboBox.clear()
@@ -261,6 +337,9 @@ class CanvasWindow(QMainWindow):
         self.ui.actionAddObjectsList.setIcon(
             QIcon(get_resource_path(f"Icons/library_add_24dp_{suffix}.svg"))
         )
+        self.ui.deleteTemplateButton.setIcon(
+            QIcon(get_resource_path(f"Icons/delete_24dp_{suffix}.svg"))
+        )
 
     def save_project_png(self):
         file_path, _ = QFileDialog.getSaveFileName(
@@ -348,7 +427,7 @@ class CanvasWindow(QMainWindow):
             if area:
                 area_data = {
                     "width": int(area._width_m),
-                    "length": int(area._length_m),
+                    "length": int(area._height_m),
                     "x": int(area.pos().x() / PIXELS_PER_METER),
                     "y": int(area.pos().y() / PIXELS_PER_METER)
                 }
@@ -585,17 +664,37 @@ class CanvasWindow(QMainWindow):
             dialog.exec()
 
     def set_area(self):
-        dialog = SetAreaWindow(self)
-        if dialog.exec() == SetAreaWindow.Accepted:
-            width, height = dialog.get_values()
-            if width and height:
-                self.set_workspace_area(width, height)
-                if self._current_project:
-                    self._current_project['width'] = width
-                    self._current_project['length'] = height
-                    self._current_project['_area_modified'] = True
-                    self.statusBar().showMessage(f"Площадка изменена: {width}×{height} м (нажмите 💾 для сохранения)",
-                                                 5000)
+        # Создаем окно с выбором действия
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Настройка площадки")
+        msg.setText("Как вы хотите задать границы площадки?")
+
+        btn_draw = msg.addButton("Нарисовать полигон", QMessageBox.ButtonRole.ActionRole)
+        btn_manual = msg.addButton("Ввести размеры", QMessageBox.ButtonRole.ActionRole)
+        msg.addButton("Отмена", QMessageBox.ButtonRole.RejectRole)
+
+        msg.exec()
+
+        if msg.clickedButton() == btn_draw:
+            # Включаем режим рисования площадки
+            self._drawing_mode = "area"
+            self.graphicsView.start_drawing()
+
+        elif msg.clickedButton() == btn_manual:
+            # Старая логика с текстовыми полями
+            dialog = SetAreaWindow(self)
+            if dialog.exec() == SetAreaWindow.Accepted:
+                width, height = dialog.get_values()
+                if width and height:
+                    self.set_workspace_area(width, height)
+                    if self._current_project:
+                        self._current_project['width'] = width
+                        self._current_project['length'] = height
+                        self._current_project['_area_modified'] = True
+                        self.statusBar().showMessage(
+                            f"Площадка изменена: {width}×{height} м (нажмите 💾 для сохранения)",
+                            5000
+                        )
 
     def set_workspace_area(self, width_m, height_m):
         # Удаляем старую площадку
@@ -645,17 +744,19 @@ class CanvasWindow(QMainWindow):
             obj.set_zone_outside_area(False)
             return False
 
-        area_rect = area.mapToScene(area.boundingRect()).boundingRect()
+        # Получаем контур площадки в координатах сцены
+        area_path = area.mapToScene(area.shape())
 
-        # Проверяем сам объект (body)
-        obj_body_rect = obj.mapToScene(obj.bodyRect()).boundingRect()
-        is_obj_outside = not area_rect.contains(obj_body_rect)
+        # Проверяем сам объект
+        obj_body_path = obj.mapToScene(obj.bodyPath())
+        # Если площадка не содержит полностью контур объекта
+        is_obj_outside = not area_path.contains(obj_body_path)
         obj.set_outside_area(is_obj_outside)
 
         # Проверяем зону обслуживания
         if obj._zone_margin_m > 0:
-            obj_zone_rect = obj.mapToScene(obj.zoneRect()).boundingRect()
-            is_zone_outside = not area_rect.contains(obj_zone_rect)
+            obj_zone_path = obj.mapToScene(obj.zonePath())
+            is_zone_outside = not area_path.contains(obj_zone_path)
             obj.set_zone_outside_area(is_zone_outside)
         else:
             obj.set_zone_outside_area(is_obj_outside)
@@ -665,7 +766,6 @@ class CanvasWindow(QMainWindow):
     def check_object_collisions(self):
         objects = [item for item in self.scene.items() if isinstance(item, SnappableObject)]
 
-        # Сначала сбрасываем флаги для всех
         for obj in objects:
             obj.set_overlapping(False)
             obj.set_zone_overlapping(False)
@@ -675,20 +775,18 @@ class CanvasWindow(QMainWindow):
                 if i >= j:
                     continue
 
-                # 1. Проверяем столкновение самих объектов
-                body1_rect = obj1.mapToScene(obj1.bodyRect()).boundingRect()
-                body2_rect = obj2.mapToScene(obj2.bodyRect()).boundingRect()
+                body1_path = obj1.mapToScene(obj1.bodyPath())
+                body2_path = obj2.mapToScene(obj2.bodyPath())
 
-                if body1_rect.intersects(body2_rect):
+                # Пересекаются ли пути (контуры)
+                if body1_path.intersects(body2_path):
                     obj1.set_overlapping(True)
                     obj2.set_overlapping(True)
 
-                # 2. Проверяем пересечение зон обслуживания
-                zone1_rect = obj1.mapToScene(obj1.zoneRect()).boundingRect()
-                zone2_rect = obj2.mapToScene(obj2.zoneRect()).boundingRect()
+                zone1_path = obj1.mapToScene(obj1.zonePath())
+                zone2_path = obj2.mapToScene(obj2.zonePath())
 
-                if zone1_rect.intersects(zone2_rect):
-                    # Отмечаем ошибку зоны, только если хотя бы у одного объекта есть зона
+                if zone1_path.intersects(zone2_path):
                     if obj1._zone_margin_m > 0 or obj2._zone_margin_m > 0:
                         obj1.set_zone_overlapping(True)
                         obj2.set_zone_overlapping(True)
@@ -1073,9 +1171,15 @@ class CanvasWindow(QMainWindow):
                 item._is_modified = True
 
             if "length" in changes or "width" in changes:
-                item.prepareGeometryChange()
-                item.update()
-                save_queue.append(('resize', element_id, int(item._width_m), int(item._height_m)))
+                # Берем новые значения или оставляем старые, если они не менялись
+                new_length = changes.get("length", item._width_m)
+                new_width = changes.get("width", item._height_m)
+
+                # Вызываем наш новый умный метод масштабирования
+                item.update_size(new_length, new_width)
+
+                item._is_modified = True
+                save_queue.append(('resize', element_id, float(item._width_m), float(item._height_m)))
 
             self.check_object_bounds(item)
             modified_count += 1
@@ -1091,6 +1195,134 @@ class CanvasWindow(QMainWindow):
         self.statusBar().showMessage(
             f"Изменения применены к {modified_count} объектов. Сохранение...", 3000
         )
+
+    def _on_custom_polygon_drawn(self, points_scene_m: list):
+        """Диспетчер: решает, что создавать по завершении рисования"""
+        if getattr(self, '_drawing_mode', 'object') == 'area':
+            self._create_custom_area(points_scene_m)
+        else:
+            self._create_custom_object(points_scene_m)
+
+        # Возвращаем режим по умолчанию
+        self._drawing_mode = "object"
+
+    def _create_custom_object(self, points_scene_m: list):
+        """Создает SnappableObject на основе нарисованного полигона"""
+        # 1. Вычисляем исходные габариты нарисованного полигона
+        min_x = min(pt[0] for pt in points_scene_m)
+        min_y = min(pt[1] for pt in points_scene_m)
+        max_x = max(pt[0] for pt in points_scene_m)
+        max_y = max(pt[1] for pt in points_scene_m)
+
+        width_m = max_x - min_x
+        height_m = max_y - min_y
+        local_polygon_m = [(pt[0] - min_x, pt[1] - min_y) for pt in points_scene_m]
+
+        default_name = f"Полигон {len(self._elements_map) + 1}"
+
+        # 2. ВЫЗЫВАЕМ ДИАЛОГ СОЗДАНИЯ (сразу после рисования)
+        dialog = EditObjectWindow(
+            self,
+            initial_text=default_name,
+            initial_length=width_m,
+            initial_width=height_m,
+            initial_color="#BB86FC",
+            initial_zone=0.0,
+            is_creation=True  # ⭐ ГЛАВНЫЙ ФЛАГ: Разрешает задать зону!
+        )
+
+        # Если пользователь нажал "Отмена" - прерываем создание
+        if dialog.exec() != QDialog.Accepted:
+            self.statusBar().showMessage("Создание объекта отменено", 3000)
+            return
+
+        # 3. Получаем данные, которые ввел пользователь
+        changes = dialog.get_data()
+        name = changes.get("text", default_name)
+        color = changes.get("color", "#BB86FC")
+        zone_margin = changes.get("zone_margin", 0.0)  # ⭐ Считываем зону
+
+        # 4. Создаем объект
+        obj = SnappableObject(
+            text=name,
+            width_m=width_m,
+            height_m=height_m,
+            polygon_m=local_polygon_m,
+            color=color,
+            grid_size_m=0.5,
+            pixels_per_meter=PIXELS_PER_METER,
+            zone_margin_m=zone_margin  # ⭐ Применяем зону к полигону
+        )
+
+        # 5. Умное масштабирование (если пользователь вдруг изменил ширину/длину в диалоге)
+        if "length" in changes or "width" in changes:
+            new_length = changes.get("length", width_m)
+            new_width = changes.get("width", height_m)
+            obj.update_size(new_length, new_width)
+
+        # 6. Регистрируем и размещаем на сцене
+        obj._element_id = f"custom_temp_{len(self._elements_map)}"
+        obj._element_type_id = None
+        obj._is_modified = True
+
+        x_px = min_x * PIXELS_PER_METER
+        y_px = min_y * PIXELS_PER_METER
+        obj.setPos(x_px, y_px)
+
+        self.scene.addItem(obj)
+        self._elements_map[obj._element_id] = obj
+
+        obj.geometryChanged.connect(lambda: self._on_object_moved_ui(obj))
+
+        self.check_object_bounds(obj)
+        self.check_object_collisions()
+        self.update_status_bar()
+        self.scene.update()
+
+        self.statusBar().showMessage(f"Объект '{name}' успешно создан!", 3000)
+
+    def _create_custom_area(self, points_scene_m: list):
+        """Создает полигональную площадку WorkspaceArea"""
+        min_x = min(pt[0] for pt in points_scene_m)
+        min_y = min(pt[1] for pt in points_scene_m)
+        max_x = max(pt[0] for pt in points_scene_m)
+        max_y = max(pt[1] for pt in points_scene_m)
+
+        width_m = max_x - min_x
+        height_m = max_y - min_y
+
+        # Нормализуем координаты площадки
+        local_polygon_m = [(pt[0] - min_x, pt[1] - min_y) for pt in points_scene_m]
+
+        # Удаляем старую площадку со сцены
+        for item in self.scene.items():
+            if isinstance(item, WorkspaceArea):
+                self.scene.removeItem(item)
+
+        # Создаем новую полигональную площадку
+        area = WorkspaceArea(polygon_m=local_polygon_m)
+        self.scene.addItem(area)
+
+        # Размещаем ее точно там, где кликал пользователь
+        area.setPos(min_x * PIXELS_PER_METER, min_y * PIXELS_PER_METER)
+
+        # Обновляем данные проекта
+        if self._current_project:
+            self._current_project['width'] = width_m
+            self._current_project['length'] = height_m
+            self._current_project['vertices'] = local_polygon_m  # Сохраняем вершины для JSON/БД
+            self._current_project['_area_modified'] = True
+
+        # После изменения площадки, нужно ПЕРЕПРОВЕРИТЬ все объекты на сцене!
+        # Вдруг площадка сузилась, и объекты оказались за бортом
+        for obj in self._elements_map.values():
+            self.check_object_bounds(obj)
+
+        self.check_object_collisions()
+        self.update_status_bar()
+        self.scene.update()
+
+        self.statusBar().showMessage("Полигональная площадка успешно создана! (нажмите 💾 для сохранения)", 5000)
 
     def _process_save_queue(self):
         """Обрабатывает очередь сохранений последовательно"""
