@@ -1,7 +1,7 @@
 import httpx
 from client.config.settings import API_BASE_URL
 
-async def add_elements(project_id: int, element_type_id: int, x: int, y: int,title:str, color:str, token:str, vertices: tuple) -> dict:
+async def add_elements(project_id: int, element_type_id: int, x: int, y: int,title:str, color:str, token:str) -> dict:
     try:
         async with httpx.AsyncClient(base_url = API_BASE_URL,  timeout = 15.0) as client:
             response = await client.post(
@@ -12,8 +12,7 @@ async def add_elements(project_id: int, element_type_id: int, x: int, y: int,tit
                     "x" : x,
                     "y" : y,
                     "title": title,
-                    "color": color,
-                    "vertices": vertices
+                    "color": color
                 },
                 headers = {"Authorization": f"Bearer {token}"}#добавлено с помощью ии
             )
@@ -96,32 +95,6 @@ async def move_element(id:int, x: int, y: int, token: str) -> dict:
             raise ValueError("Доступ запрещён")
         else:
             raise ValueError("Не удалось переместить элемент")
-    except (httpx.ConnectTimeout, httpx.RequestError):
-        raise ValueError("Сервер недоступен. Проверьте подключение")
-
-async def resize_element(id:int, vertices:tuple, token: str) -> dict:
-    try:
-        async with httpx.AsyncClient(base_url=API_BASE_URL,  timeout = 15.0) as client:
-            response = await client.put(
-                f"/api/v1/resize_element",
-                json = {
-                    "id": id,
-                    "vertices": vertices
-                },
-                headers={"Authorization": f"Bearer {token}"}
-            )
-            response.raise_for_status()
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 401:
-            raise ValueError("Сессия истекла. Войдите снова.")
-        elif e.response.status_code == 404:
-            raise ValueError("Элемент не найден")
-        elif e.response.status_code == 403:
-            raise ValueError("Доступ запрещён")
-        else:
-            raise ValueError("Не удалось изменить размер")
     except (httpx.ConnectTimeout, httpx.RequestError):
         raise ValueError("Сервер недоступен. Проверьте подключение")
 
